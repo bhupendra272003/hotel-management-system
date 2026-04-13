@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+require("dotenv").config();
 
 const auth = require("./routes/auth");
 const booking = require("./routes/booking");
@@ -12,17 +13,41 @@ const task = require("./routes/task");
 
 const app = express();
 
-// CORS configuration
+// CORS configuration - Allow multiple origins
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://hotel-management-system.vercel.app',
+  'https://hotel-management-system-git-main.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: "*",
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1 && process.env.NODE_ENV === 'production') {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }));
 
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect("mongodb://127.0.0.1:27017/hotel");
+// MongoDB connection - Use environment variable
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/hotel";
+
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+});
 
 mongoose.connection.on("connected", () => {
   console.log("✅ Connected to MongoDB");
@@ -31,6 +56,10 @@ mongoose.connection.on("connected", () => {
 
 mongoose.connection.on("error", (err) => {
   console.log("❌ MongoDB Error:", err.message);
+});
+
+mongoose.connection.on("disconnected", () => {
+  console.log("⚠️ MongoDB Disconnected");
 });
 
 async function createDefaultUsers() {
@@ -71,11 +100,12 @@ async function createDefaultUsers() {
       const existing = await User.findOne({ email: user.email });
       if (!existing) {
         await User.create(user);
-        console.log(`✅ Created ${user.role}: ${user.email}`);
+        console.log(`✅ Created ${user.role}: ${user.email} / ${user.password}`);
       }
     }
+    console.log("✅ Default users ready!");
   } catch (error) {
-    console.log("Database ready");
+    console.log("Note: Database ready - users will be created when needed");
   }
 }
 
@@ -88,13 +118,35 @@ app.use("/api/billing", billing);
 app.use("/api/customer", customer);
 app.use("/api/tasks", task);
 
+// Health check route
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
+  });
+});
+
 // Test route
 app.get("/api/test", (req, res) => {
   res.json({ message: "Server is running!", status: "ok" });
 });
 
-const PORT = 5000;
+// 404 handler for undefined routes
+app.use("*", (req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Something went wrong!", message: err.message });
+});
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📋 Test API: http://localhost:${PORT}/api/test`);
+  console.log(`📋 Health Check: http://localhost:${PORT}/api/health`);
 });
