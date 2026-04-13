@@ -11,4 +11,4 @@ services:
       - key: PORT
         value: 5000
       - key: MONGODB_URI
-        sync: false
+        value: mongodb+srv://hotel_user:<db_password>@cluster0.3s4isxq.mongodb.net/?appName=Cluster0
