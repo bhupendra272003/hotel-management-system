@@ -2,12 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../ThemeToggle";
-
-// Detect environment
-const isProduction = process.env.NODE_ENV === 'production';
-const API_URL = isProduction 
-  ? 'https://hotelmna.onrender.com/api' 
-  : 'http://localhost:5000/api';
+import API_URL from "../../api/config";
 
 export default function Login({ setUser }) {
   const [email, setEmail] = useState("");
@@ -17,7 +12,6 @@ export default function Login({ setUser }) {
   const [backendStatus, setBackendStatus] = useState("checking");
   const navigate = useNavigate();
 
-  // Check backend health on component mount
   useEffect(() => {
     checkBackendHealth();
   }, []);
@@ -30,7 +24,7 @@ export default function Login({ setUser }) {
     } catch (error) {
       console.error("❌ Backend connection failed:", error);
       setBackendStatus("disconnected");
-      setError(`Cannot connect to backend at ${API_URL}. Please make sure the backend server is running.`);
+      setError(`Cannot connect to backend at ${API_URL}`);
     }
   };
 
@@ -44,46 +38,24 @@ export default function Login({ setUser }) {
     setError("");
 
     try {
-      console.log("Attempting login to:", `${API_URL}/auth/login`);
-      
-      const res = await axios.post(`${API_URL}/auth/login`, { 
-        email, 
-        password 
-      }, { timeout: 10000 });
-      
-      console.log("Login response:", res.data);
+      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
       
       if (res.data.success) {
         localStorage.setItem("token", "loggedin");
         localStorage.setItem("userRole", res.data.role);
         localStorage.setItem("userId", res.data.user._id);
         localStorage.setItem("userName", res.data.user.name);
-        
         setUser(res.data.user);
         
-        if (res.data.role === "admin") {
-          navigate("/admin");
-        } else if (res.data.role === "receptionist") {
-          navigate("/receptionist");
-        } else if (res.data.role === "waiter") {
-          navigate("/waiter");
-        } else {
-          navigate("/dashboard");
-        }
+        if (res.data.role === "admin") navigate("/admin");
+        else if (res.data.role === "receptionist") navigate("/receptionist");
+        else if (res.data.role === "waiter") navigate("/waiter");
+        else navigate("/dashboard");
       } else {
         setError(res.data.message || "Invalid credentials!");
       }
     } catch (error) {
-      console.error("Login error details:", error);
-      if (error.code === "ECONNABORTED") {
-        setError("Request timeout. Backend is not responding.");
-      } else if (error.message === "Network Error") {
-        setError(`Network Error: Cannot reach backend at ${API_URL}. Make sure the backend server is running.`);
-      } else if (error.response) {
-        setError(`Server error: ${error.response.status} - ${error.response.data?.message || "Unknown error"}`);
-      } else {
-        setError(`Login failed: ${error.message}`);
-      }
+      setError("Login failed! Please try again.");
     } finally {
       setLoading(false);
     }
@@ -91,30 +63,20 @@ export default function Login({ setUser }) {
 
   return (
     <div className="login-container" style={{
-      minHeight: '100vh',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      background: 'var(--bg-primary)',
-      padding: '20px'
+      minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center',
+      background: 'var(--bg-primary)', padding: '20px'
     }}>
       <div className="login-card" style={{
-        maxWidth: '450px',
-        width: '100%',
-        background: 'var(--bg-card)',
-        borderRadius: '25px',
-        padding: '40px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-        backdropFilter: 'blur(10px)',
+        maxWidth: '450px', width: '100%', background: 'var(--bg-card)', borderRadius: '25px',
+        padding: '40px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)',
         border: '1px solid var(--border-color)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <div style={{ fontSize: '4rem', marginBottom: '10px' }}>🏨</div>
           <h1 style={{ fontSize: '1.8rem', color: '#dc3c3c', marginBottom: '5px' }}>Grand Hotel</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Staff Login Portal</p>
-          {backendStatus === "checking" && <p style={{ fontSize: '12px', color: '#ffc107' }}>Checking backend connection...</p>}
-          {backendStatus === "connected" && <p style={{ fontSize: '12px', color: '#28a745' }}>✅ Backend connected at {API_URL}</p>}
-          {backendStatus === "disconnected" && <p style={{ fontSize: '12px', color: '#dc3545' }}>❌ Backend not reachable at {API_URL}</p>}
+          {backendStatus === "connected" && <p style={{ fontSize: '12px', color: '#28a745' }}>✅ Backend connected</p>}
+          {backendStatus === "disconnected" && <p style={{ fontSize: '12px', color: '#dc3545' }}>❌ Backend not reachable</p>}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
@@ -123,94 +85,41 @@ export default function Login({ setUser }) {
 
         <div style={{ marginBottom: '25px' }}>
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '500' }}>📧 Email Address</label>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)' }}>📧 Email Address</label>
+            <input type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && login()}
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                border: '2px solid var(--border-color)',
-                borderRadius: '12px',
-                background: 'var(--bg-glass)',
-                color: 'var(--text-primary)',
-                fontSize: '15px'
-              }}
-            />
+              style={{ width: '100%', padding: '14px 16px', border: '2px solid var(--border-color)', borderRadius: '12px', background: 'var(--bg-glass)', color: 'var(--text-primary)' }} />
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '500' }}>🔒 Password</label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)' }}>🔒 Password</label>
+            <input type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && login()}
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                border: '2px solid var(--border-color)',
-                borderRadius: '12px',
-                background: 'var(--bg-glass)',
-                color: 'var(--text-primary)',
-                fontSize: '15px'
-              }}
-            />
+              style={{ width: '100%', padding: '14px 16px', border: '2px solid var(--border-color)', borderRadius: '12px', background: 'var(--bg-glass)', color: 'var(--text-primary)' }} />
           </div>
 
-          {error && (
-            <div style={{
-              padding: '12px',
-              borderRadius: '10px',
-              background: '#f8d7da',
-              color: '#721c24',
-              fontSize: '14px',
-              textAlign: 'center',
-              marginBottom: '20px',
-              border: '1px solid #f5c6cb'
-            }}>
-              {error}
-            </div>
-          )}
+          {error && <div style={{ padding: '12px', borderRadius: '10px', background: '#f8d7da', color: '#721c24', textAlign: 'center', marginBottom: '20px' }}>{error}</div>}
 
-          <button
-            onClick={login}
-            disabled={loading || backendStatus === "disconnected"}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: 'linear-gradient(135deg, #dc3c3c, #b83232)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: (loading || backendStatus === "disconnected") ? 'not-allowed' : 'pointer',
-              opacity: (loading || backendStatus === "disconnected") ? 0.7 : 1
-            }}
-          >
-            {loading ? "Logging in..." : backendStatus === "disconnected" ? "Backend Offline" : "🔐 Login"}
+          <button onClick={login} disabled={loading || backendStatus === "disconnected"}
+            style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #dc3c3c, #b83232)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: (loading || backendStatus === "disconnected") ? 'not-allowed' : 'pointer', opacity: (loading || backendStatus === "disconnected") ? 0.7 : 1 }}>
+            {loading ? "Logging in..." : "🔐 Login"}
           </button>
         </div>
 
         <div style={{ marginTop: '25px', padding: '20px', background: 'var(--bg-glass)', borderRadius: '15px', border: '1px solid var(--border-color)' }}>
-          <h4 style={{ textAlign: 'center', marginBottom: '15px', color: '#dc3c3c', fontSize: '0.9rem' }}>📋 Demo Credentials</h4>
+          <h4 style={{ textAlign: 'center', marginBottom: '15px', color: '#dc3c3c' }}>📋 Demo Credentials</h4>
           <div style={{ display: 'grid', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-card)', borderRadius: '10px' }}>
               <div><span style={{ fontWeight: 'bold', color: '#667eea' }}>👑 Admin</span></div>
-              <div style={{ textAlign: 'right' }}><div style={{ fontSize: '12px' }}>admin@hotel.com</div><div style={{ fontSize: '12px', color: '#dc3c3c' }}>admin123</div></div>
+              <div style={{ textAlign: 'right' }}>admin@hotel.com / admin123</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-card)', borderRadius: '10px' }}>
               <div><span style={{ fontWeight: 'bold', color: '#17a2b8' }}>👔 Receptionist</span></div>
-              <div style={{ textAlign: 'right' }}><div style={{ fontSize: '12px' }}>reception@hotel.com</div><div style={{ fontSize: '12px', color: '#17a2b8' }}>recep123</div></div>
+              <div style={{ textAlign: 'right' }}>reception@hotel.com / recep123</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-card)', borderRadius: '10px' }}>
               <div><span style={{ fontWeight: 'bold', color: '#28a745' }}>🍽️ Waiter</span></div>
-              <div style={{ textAlign: 'right' }}><div style={{ fontSize: '12px' }}>waiter@hotel.com</div><div style={{ fontSize: '12px', color: '#28a745' }}>waiter123</div></div>
+              <div style={{ textAlign: 'right' }}>waiter@hotel.com / waiter123</div>
             </div>
           </div>
         </div>

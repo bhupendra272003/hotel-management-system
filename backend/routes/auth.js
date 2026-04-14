@@ -1,9 +1,11 @@
 const router = require("express").Router();
 const User = require("../models/User");
 
-// Login
+// ==================== LOGIN ====================
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+  
+  console.log("Login attempt:", email);
   
   // Check for admin hardcoded first
   if (email === "admin@hotel.com" && password === "admin123") {
@@ -38,7 +40,7 @@ router.post("/login", async (req, res) => {
   const user = await User.findOne({ email, isActive: true });
   if (user && user.password === password) {
     await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
-    res.json({ 
+    return res.json({ 
       success: true, 
       role: user.role,
       user: { 
@@ -50,18 +52,24 @@ router.post("/login", async (req, res) => {
         joinDate: user.joinDate
       }
     });
-  } else {
-    res.json({ success: false, message: "Invalid credentials" });
   }
+  
+  return res.json({ success: false, message: "Invalid credentials" });
 });
 
-// Get user profile
+// ==================== GET USER PROFILE ====================
 router.get("/profile/:userId", async (req, res) => {
   try {
+    console.log("Fetching profile for userId:", req.params.userId);
+    
     const user = await User.findById(req.params.userId).select("-password");
+    
     if (!user) {
+      console.log("User not found:", req.params.userId);
       return res.status(404).json({ error: "User not found" });
     }
+    
+    console.log("Profile found:", user.email);
     res.json(user);
   } catch (error) {
     console.error("Error fetching profile:", error);
@@ -69,10 +77,11 @@ router.get("/profile/:userId", async (req, res) => {
   }
 });
 
-// Update user profile
+// ==================== UPDATE USER PROFILE ====================
 router.put("/profile/:userId", async (req, res) => {
   try {
     const { name, phone, address, salary } = req.body;
+    
     const user = await User.findByIdAndUpdate(
       req.params.userId,
       { name, phone, address, salary, updatedAt: new Date() },
@@ -90,7 +99,7 @@ router.put("/profile/:userId", async (req, res) => {
   }
 });
 
-// Change password
+// ==================== CHANGE PASSWORD ====================
 router.put("/change-password/:userId", async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -128,7 +137,7 @@ router.put("/change-password/:userId", async (req, res) => {
   }
 });
 
-// Get all staff (admin only)
+// ==================== GET ALL STAFF (Admin only) ====================
 router.get("/staff", async (req, res) => {
   try {
     const staff = await User.find({ role: { $ne: "admin" } }).select("-password");
@@ -138,7 +147,7 @@ router.get("/staff", async (req, res) => {
   }
 });
 
-// Register new staff (admin only)
+// ==================== REGISTER NEW STAFF (Admin only) ====================
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, role, phone, salary } = req.body;
@@ -148,7 +157,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Email already exists" });
     }
     
-    const user = new User({ name, email, password, role, phone, salary });
+    const user = new User({ name, email, password, role, phone, salary, isActive: true });
     await user.save();
     
     res.json({ success: true, user: { ...user.toObject(), password: undefined } });
@@ -157,35 +166,47 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Update staff (admin only)
+// ==================== UPDATE STAFF (Admin only) ====================
 router.put("/staff/:id", async (req, res) => {
   try {
     const { name, email, role, phone, salary, isActive } = req.body;
+    
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { name, email, role, phone, salary, isActive, updatedAt: new Date() },
       { new: true }
     ).select("-password");
+    
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Delete staff (admin only)
+// ==================== DELETE STAFF (Admin only) ====================
 router.delete("/staff/:id", async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
+    const user = await User.findByIdAndDelete(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    res.json({ success: true, message: "Staff member deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Reset password for staff (admin only)
+// ==================== RESET STAFF PASSWORD (Admin only) ====================
 router.put("/reset-password/:id", async (req, res) => {
   try {
     const { newPassword } = req.body;
+    
     const user = await User.findById(req.params.id);
     
     if (!user) {
@@ -197,6 +218,21 @@ router.put("/reset-password/:id", async (req, res) => {
     await user.save();
     
     res.json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== GET SINGLE STAFF MEMBER ====================
+router.get("/staff/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+    
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    res.json(user);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

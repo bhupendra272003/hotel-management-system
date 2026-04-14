@@ -13,23 +13,35 @@ const task = require("./routes/task");
 
 const app = express();
 
-// TEMPORARY - Allow all origins for testing
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://hotel-management-system.vercel.app',
+  'https://hotelmna.onrender.com',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: true,
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    const msg = 'CORS policy does not allow access from this origin.';
+    return callback(new Error(msg), false);
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
 
 app.use(express.json());
 
-// MongoDB connection - Use environment variable
+// MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/hotel";
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-});
+mongoose.connect(MONGODB_URI);
 
 mongoose.connection.on("connected", () => {
   console.log("✅ Connected to MongoDB");
@@ -38,10 +50,6 @@ mongoose.connection.on("connected", () => {
 
 mongoose.connection.on("error", (err) => {
   console.log("❌ MongoDB Error:", err.message);
-});
-
-mongoose.connection.on("disconnected", () => {
-  console.log("⚠️ MongoDB Disconnected");
 });
 
 async function createDefaultUsers() {
@@ -87,7 +95,7 @@ async function createDefaultUsers() {
     }
     console.log("✅ Default users ready!");
   } catch (error) {
-    console.log("Note: Database ready - users will be created when needed");
+    console.log("Database ready - users will be created when needed");
   }
 }
 
@@ -114,21 +122,9 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "Server is running!", status: "ok" });
 });
 
-// 404 handler for undefined routes
-app.use("*", (req, res) => {
-  res.status(404).json({ error: "Route not found" });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Something went wrong!", message: err.message });
-});
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📋 Test API: http://localhost:${PORT}/api/test`);
-  console.log(`📋 Health Check: http://localhost:${PORT}/api/health`);
 });
