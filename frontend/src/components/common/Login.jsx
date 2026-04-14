@@ -1,17 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../ThemeToggle";
 
-// Direct API URL - no environment variable needed
-const API_URL = 'https://hotelmna.onrender.com/api';
+// Detect environment
+const isProduction = process.env.NODE_ENV === 'production';
+const API_URL = isProduction 
+  ? 'https://hotelmna.onrender.com/api' 
+  : 'http://localhost:5000/api';
 
 export default function Login({ setUser }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [backendStatus, setBackendStatus] = useState("checking");
   const navigate = useNavigate();
+
+  // Check backend health on component mount
+  useEffect(() => {
+    checkBackendHealth();
+  }, []);
+
+  const checkBackendHealth = async () => {
+    try {
+      await axios.get(`${API_URL}/test`, { timeout: 5000 });
+      setBackendStatus("connected");
+      console.log("✅ Backend connected at:", API_URL);
+    } catch (error) {
+      console.error("❌ Backend connection failed:", error);
+      setBackendStatus("disconnected");
+      setError(`Cannot connect to backend at ${API_URL}. Please make sure the backend server is running.`);
+    }
+  };
 
   const login = async () => {
     if (!email || !password) {
@@ -24,12 +45,11 @@ export default function Login({ setUser }) {
 
     try {
       console.log("Attempting login to:", `${API_URL}/auth/login`);
-      console.log("With credentials:", { email });
       
       const res = await axios.post(`${API_URL}/auth/login`, { 
         email, 
         password 
-      });
+      }, { timeout: 10000 });
       
       console.log("Login response:", res.data);
       
@@ -55,8 +75,15 @@ export default function Login({ setUser }) {
       }
     } catch (error) {
       console.error("Login error details:", error);
-      console.error("Error response:", error.response);
-      setError(`Login failed: ${error.response?.data?.message || error.message || "Please try again"}`);
+      if (error.code === "ECONNABORTED") {
+        setError("Request timeout. Backend is not responding.");
+      } else if (error.message === "Network Error") {
+        setError(`Network Error: Cannot reach backend at ${API_URL}. Make sure the backend server is running.`);
+      } else if (error.response) {
+        setError(`Server error: ${error.response.status} - ${error.response.data?.message || "Unknown error"}`);
+      } else {
+        setError(`Login failed: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -85,6 +112,9 @@ export default function Login({ setUser }) {
           <div style={{ fontSize: '4rem', marginBottom: '10px' }}>🏨</div>
           <h1 style={{ fontSize: '1.8rem', color: '#dc3c3c', marginBottom: '5px' }}>Grand Hotel</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Staff Login Portal</p>
+          {backendStatus === "checking" && <p style={{ fontSize: '12px', color: '#ffc107' }}>Checking backend connection...</p>}
+          {backendStatus === "connected" && <p style={{ fontSize: '12px', color: '#28a745' }}>✅ Backend connected at {API_URL}</p>}
+          {backendStatus === "disconnected" && <p style={{ fontSize: '12px', color: '#dc3545' }}>❌ Backend not reachable at {API_URL}</p>}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
@@ -149,7 +179,7 @@ export default function Login({ setUser }) {
 
           <button
             onClick={login}
-            disabled={loading}
+            disabled={loading || backendStatus === "disconnected"}
             style={{
               width: '100%',
               padding: '14px',
@@ -159,11 +189,11 @@ export default function Login({ setUser }) {
               borderRadius: '12px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1
+              cursor: (loading || backendStatus === "disconnected") ? 'not-allowed' : 'pointer',
+              opacity: (loading || backendStatus === "disconnected") ? 0.7 : 1
             }}
           >
-            {loading ? "Logging in..." : "🔐 Login"}
+            {loading ? "Logging in..." : backendStatus === "disconnected" ? "Backend Offline" : "🔐 Login"}
           </button>
         </div>
 
