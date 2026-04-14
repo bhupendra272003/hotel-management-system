@@ -2,7 +2,9 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../ThemeToggle";
-import API_URL from "../../api/config";
+
+// Direct API URL - no environment variable needed
+const API_URL = 'https://hotelmna.onrender.com/api';
 
 export default function Login({ setUser }) {
   const [email, setEmail] = useState("");
@@ -22,6 +24,7 @@ export default function Login({ setUser }) {
 
     try {
       console.log("Attempting login to:", `${API_URL}/auth/login`);
+      console.log("With credentials:", { email });
       
       const res = await axios.post(`${API_URL}/auth/login`, { 
         email, 
@@ -51,8 +54,9 @@ export default function Login({ setUser }) {
         setError(res.data.message || "Invalid credentials!");
       }
     } catch (error) {
-      console.error("Login error:", error);
-      setError("Login failed! Please try again.");
+      console.error("Login error details:", error);
+      console.error("Error response:", error.response);
+      setError(`Login failed: ${error.response?.data?.message || error.message || "Please try again"}`);
     } finally {
       setLoading(false);
     }
