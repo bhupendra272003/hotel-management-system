@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import API_URL from "../../api/config";
 
 export default function TaskDistribution() {
   const [staff, setStaff] = useState([]);
