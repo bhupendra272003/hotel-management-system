@@ -5,18 +5,8 @@ import API_URL from "../../api/config";
 
 export default function CustomerBooking() {
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    aadhar: "",
-    gender: "Male",
-    age: "",
-    roomType: "Standard",
-    bedType: "Single",
-    people: 1,
-    days: 1,
-    checkInDate: "",
-    status: "Booked"
+    name: "", email: "", aadhar: "", gender: "Male", age: "",
+    roomNo: "", roomType: "Standard", bedType: "Single", people: 1, days: 1
   });
   const [availableRooms, setAvailableRooms] = useState([]);
   const navigate = useNavigate();
@@ -26,67 +16,51 @@ export default function CustomerBooking() {
   }, []);
 
   const fetchAvailableRooms = async () => {
-    const res = await axios.get("http://localhost:5000/api/customer/available-rooms");
-    const allRooms = ["101", "102", "103", "104", "105", "201", "202", "203", "204", "205"];
-    const available = allRooms.filter(room => !res.data.bookedRooms.includes(room));
-    setAvailableRooms(available);
+    try {
+      const res = await axios.get(`${API_URL}/booking`);
+      const bookedRooms = res.data.filter(b => b.status === "Booked" || b.status === "CheckedIn").map(b => b.roomNo);
+      const allRooms = ["101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "201", "202", "203", "204", "205"];
+      const available = allRooms.filter(room => !bookedRooms.includes(room));
+      setAvailableRooms(available);
+    } catch (error) {
+      console.error("Error fetching rooms:", error);
+    }
   };
 
   const submit = async () => {
-    if (!form.roomNo) {
-      alert("Please select a room number");
-      return;
-    }
     try {
-      await axios.post("http://localhost:5000/api/customer/book-room", form);
-      alert("🎉 Room Booked Successfully! Please proceed to reception for check-in.");
+      await axios.post(`${API_URL}/booking`, form);
+      alert("Room Booked Successfully!");
       navigate("/");
     } catch (error) {
-      alert("Booking failed. Please try again.");
+      alert("Booking failed!");
     }
   };
 
   return (
-    <div className="customer-booking">
-      <h2>📅 Book a Room</h2>
-      <input placeholder="Full Name" onChange={e => setForm({ ...form, name: e.target.value })} />
-      <input placeholder="Email" type="email" onChange={e => setForm({ ...form, email: e.target.value })} />
-      <input placeholder="Phone Number" onChange={e => setForm({ ...form, phone: e.target.value })} />
-      <input placeholder="Aadhar Number" onChange={e => setForm({ ...form, aadhar: e.target.value })} />
-      
-      <select onChange={e => setForm({ ...form, gender: e.target.value })}>
-        <option>Male</option>
-        <option>Female</option>
-        <option>Other</option>
+    <div className="booking-form" style={{ maxWidth: "600px", margin: "40px auto", padding: "30px", background: "var(--bg-card)", borderRadius: "20px" }}>
+      <h2 style={{ textAlign: "center", color: "#dc3c3c" }}>📅 Room Booking</h2>
+      <input placeholder="Full Name" onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }} />
+      <input placeholder="Email" type="email" onChange={e => setForm({ ...form, email: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }} />
+      <input placeholder="Aadhar Number" onChange={e => setForm({ ...form, aadhar: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }} />
+      <select onChange={e => setForm({ ...form, gender: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }}>
+        <option>Male</option><option>Female</option><option>Other</option>
       </select>
-      
-      <input placeholder="Age" type="number" onChange={e => setForm({ ...form, age: e.target.value })} />
-      
-      <select onChange={e => setForm({ ...form, roomType: e.target.value })}>
-        <option>Standard (₹1500/day)</option>
-        <option>Deluxe (₹3000/day)</option>
-        <option>Suite (₹5000/day)</option>
+      <input placeholder="Age" type="number" onChange={e => setForm({ ...form, age: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }} />
+      <select onChange={e => setForm({ ...form, roomNo: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }}>
+        <option value="">Select Room</option>
+        {availableRooms.map(room => <option key={room} value={room}>Room {room}</option>)}
       </select>
-      
-      <select onChange={e => setForm({ ...form, bedType: e.target.value })}>
-        <option>Single</option>
-        <option>Double</option>
-        <option>King</option>
+      <select onChange={e => setForm({ ...form, roomType: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }}>
+        <option>Standard</option><option>Deluxe</option><option>Suite</option>
       </select>
-      
-      <select onChange={e => setForm({ ...form, roomNo: e.target.value })}>
-        <option value="">Select Available Room</option>
-        {availableRooms.map(room => (
-          <option key={room} value={room}>Room {room}</option>
-        ))}
+      <select onChange={e => setForm({ ...form, bedType: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }}>
+        <option>Single</option><option>Double</option><option>King</option>
       </select>
-      
-      <input placeholder="Number of People" type="number" onChange={e => setForm({ ...form, people: e.target.value })} />
-      <input placeholder="Number of Days" type="number" onChange={e => setForm({ ...form, days: e.target.value })} />
-      <input type="date" onChange={e => setForm({ ...form, checkInDate: e.target.value })} />
-      
-      <button onClick={submit}>Confirm Booking</button>
-      <button onClick={() => navigate("/")} className="back-btn">Back to Home</button>
+      <input placeholder="Number of People" type="number" onChange={e => setForm({ ...form, people: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }} />
+      <input placeholder="Number of Days" type="number" onChange={e => setForm({ ...form, days: e.target.value })} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)", background: "var(--bg-glass)", color: "var(--text-primary)" }} />
+      <button onClick={submit} style={{ width: "100%", padding: "14px", background: "linear-gradient(135deg, #dc3c3c, #b83232)", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", cursor: "pointer", marginTop: "20px" }}>Book Room</button>
+      <button onClick={() => navigate("/")} style={{ width: "100%", padding: "12px", marginTop: "10px", background: "#6c757d", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>Back to Home</button>
     </div>
   );
 }
