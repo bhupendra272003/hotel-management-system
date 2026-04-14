@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import ThemeToggle from "../ThemeToggle";
+import API_URL from "../../api/config";
 
 export default function CustomerDashboard() {
   return (
