@@ -27,18 +27,38 @@ export default function UserProfile({ user, setUser }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("User object:", user);
     if (user && user._id) {
       fetchProfile();
+    } else {
+      console.error("No user ID found. User object:", user);
+      setMessage({ type: "error", text: "User not logged in. Please login again." });
     }
   }, [user]);
 
   const fetchProfile = async () => {
     try {
+      console.log("Fetching profile for user ID:", user._id);
+      console.log("API URL:", `${API_URL}/auth/profile/${user._id}`);
+      
       const response = await axios.get(`${API_URL}/auth/profile/${user._id}`);
+      console.log("Profile response:", response.data);
+      
       setProfile(response.data);
+      setMessage({ type: "success", text: "Profile loaded successfully!" });
+      setTimeout(() => setMessage(null), 2000);
     } catch (error) {
       console.error("Error fetching profile:", error);
-      setMessage({ type: "error", text: "Failed to load profile" });
+      console.error("Error details:", error.response?.data);
+      
+      if (error.response?.status === 404) {
+        setMessage({ type: "error", text: "User not found. Please contact support." });
+      } else if (error.response?.status === 401) {
+        setMessage({ type: "error", text: "Unauthorized. Please login again." });
+        navigate("/login");
+      } else {
+        setMessage({ type: "error", text: error.response?.data?.error || "Failed to load profile" });
+      }
     }
   };
 
@@ -66,7 +86,6 @@ export default function UserProfile({ user, setUser }) {
   };
 
   const handleChangePassword = async () => {
-    // Validation
     if (!passwordData.currentPassword) {
       setMessage({ type: "error", text: "Please enter current password" });
       return;
@@ -103,6 +122,16 @@ export default function UserProfile({ user, setUser }) {
     setLoading(false);
   };
 
+  // If no user is logged in, show login prompt
+  if (!user || !user._id) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <h2>Please login to view profile</h2>
+        <button onClick={() => navigate("/login")} style={{ padding: '10px 20px', background: '#dc3c3c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Go to Login</button>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       maxWidth: '900px',
@@ -110,10 +139,8 @@ export default function UserProfile({ user, setUser }) {
       padding: '30px',
       background: 'var(--bg-card)',
       borderRadius: '20px',
-      boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-      animation: 'fadeInUp 0.5s ease'
+      boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
     }}>
-      {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         <div style={{ fontSize: '4rem', marginBottom: '10px' }}>👤</div>
         <h1 style={{ fontSize: '2rem', color: '#dc3c3c', marginBottom: '5px' }}>My Profile</h1>
@@ -140,67 +167,28 @@ export default function UserProfile({ user, setUser }) {
 
       {/* Profile Information */}
       <div style={{ marginBottom: '30px' }}>
-        <h3 style={{
-          borderLeft: '4px solid #dc3c3c',
-          paddingLeft: '15px',
-          marginBottom: '20px',
-          color: 'var(--text-primary)'
-        }}>
-          📋 Personal Information
-        </h3>
+        <h3 style={{ borderLeft: '4px solid #dc3c3c', paddingLeft: '15px', marginBottom: '20px' }}>📋 Personal Information</h3>
         
         <div style={{ display: 'grid', gap: '20px' }}>
-          {/* Full Name */}
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Full Name *</label>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Full Name</label>
             {editMode ? (
               <input
                 type="text"
                 value={profile.name}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 15px',
-                  borderRadius: '10px',
-                  border: '2px solid var(--border-color)',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px'
-                }}
+                style={{ width: '100%', padding: '12px 15px', borderRadius: '10px', border: '2px solid var(--border-color)', background: 'var(--bg-glass)', color: 'var(--text-primary)' }}
               />
             ) : (
-              <div style={{
-                padding: '12px 15px',
-                background: 'var(--bg-glass)',
-                borderRadius: '10px',
-                color: 'var(--text-primary)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span>{profile.name || "Not set"}</span>
-              </div>
+              <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>{profile.name || "Not set"}</div>
             )}
           </div>
 
-          {/* Email (Read Only) */}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Email Address</label>
-            <div style={{
-              padding: '12px 15px',
-              background: 'var(--bg-glass)',
-              borderRadius: '10px',
-              color: 'var(--text-primary)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span>{profile.email}</span>
-              <span style={{ fontSize: '12px', color: '#6c757d' }}>Cannot be changed</span>
-            </div>
+            <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>{profile.email}</div>
           </div>
 
-          {/* Phone Number */}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Phone Number</label>
             {editMode ? (
@@ -208,360 +196,72 @@ export default function UserProfile({ user, setUser }) {
                 type="tel"
                 value={profile.phone}
                 onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                placeholder="Enter phone number"
-                style={{
-                  width: '100%',
-                  padding: '12px 15px',
-                  borderRadius: '10px',
-                  border: '2px solid var(--border-color)',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px'
-                }}
+                style={{ width: '100%', padding: '12px 15px', borderRadius: '10px', border: '2px solid var(--border-color)', background: 'var(--bg-glass)', color: 'var(--text-primary)' }}
               />
             ) : (
-              <div style={{
-                padding: '12px 15px',
-                background: 'var(--bg-glass)',
-                borderRadius: '10px',
-                color: 'var(--text-primary)'
-              }}>
-                {profile.phone || "📱 Not provided"}
-              </div>
+              <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>{profile.phone || "Not provided"}</div>
             )}
           </div>
 
-          {/* Address */}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Address</label>
             {editMode ? (
               <textarea
                 value={profile.address}
                 onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                placeholder="Enter your address"
                 rows="3"
-                style={{
-                  width: '100%',
-                  padding: '12px 15px',
-                  borderRadius: '10px',
-                  border: '2px solid var(--border-color)',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px',
-                  resize: 'vertical'
-                }}
+                style={{ width: '100%', padding: '12px 15px', borderRadius: '10px', border: '2px solid var(--border-color)', background: 'var(--bg-glass)', color: 'var(--text-primary)' }}
               />
             ) : (
-              <div style={{
-                padding: '12px 15px',
-                background: 'var(--bg-glass)',
-                borderRadius: '10px',
-                color: 'var(--text-primary)',
-                minHeight: '80px'
-              }}>
-                {profile.address || "📍 Not provided"}
-              </div>
+              <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px', minHeight: '80px' }}>{profile.address || "Not provided"}</div>
             )}
           </div>
 
-          {/* Role */}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Role</label>
-            <div style={{
-              padding: '12px 15px',
-              background: 'linear-gradient(135deg, #667eea, #764ba2)',
-              borderRadius: '10px',
-              color: 'white',
-              fontWeight: '600',
-              textTransform: 'capitalize'
-            }}>
-              👤 {profile.role || "User"}
-            </div>
+            <div style={{ padding: '12px 15px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '10px', color: 'white', fontWeight: '600', textTransform: 'capitalize' }}>{profile.role || "User"}</div>
           </div>
 
-          {/* Join Date */}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Member Since</label>
-            <div style={{
-              padding: '12px 15px',
-              background: 'var(--bg-glass)',
-              borderRadius: '10px',
-              color: 'var(--text-primary)'
-            }}>
-              📅 {profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              }) : "N/A"}
+            <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>
+              {profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "N/A"}
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
           {!editMode ? (
             <>
-              <button
-                onClick={() => setEditMode(true)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #17a2b8, #138496)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                ✏️ Edit Profile
-              </button>
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #ffc107, #e0a800)',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                🔒 Change Password
-              </button>
+              <button onClick={() => setEditMode(true)} style={{ flex: 1, padding: '12px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>✏️ Edit Profile</button>
+              <button onClick={() => setShowPasswordModal(true)} style={{ flex: 1, padding: '12px', background: '#ffc107', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>🔒 Change Password</button>
             </>
           ) : (
             <>
-              <button
-                onClick={handleUpdateProfile}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #28a745, #20c997)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  opacity: loading ? 0.7 : 1
-                }}
-              >
-                {loading ? "Saving..." : "💾 Save Changes"}
-              </button>
-              <button
-                onClick={() => {
-                  setEditMode(false);
-                  fetchProfile();
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #6c757d, #5a6268)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600'
-                }}
-              >
-                ❌ Cancel
-              </button>
+              <button onClick={handleUpdateProfile} disabled={loading} style={{ flex: 1, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>{loading ? "Saving..." : "💾 Save Changes"}</button>
+              <button onClick={() => { setEditMode(false); fetchProfile(); }} style={{ flex: 1, padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>❌ Cancel</button>
             </>
           )}
         </div>
       </div>
 
-      {/* Password Change Modal */}
+      {/* Password Modal */}
       {showPasswordModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000,
-          animation: 'fadeIn 0.3s ease'
-        }}>
-          <div style={{
-            background: 'var(--bg-card)',
-            padding: '35px',
-            borderRadius: '20px',
-            maxWidth: '450px',
-            width: '90%',
-            animation: 'scaleIn 0.3s ease'
-          }}>
-            <h3 style={{ color: '#dc3c3c', marginBottom: '20px', textAlign: 'center', fontSize: '1.5rem' }}>🔒 Change Password</h3>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Current Password</label>
-              <input
-                type="password"
-                placeholder="Enter current password"
-                value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 15px',
-                  borderRadius: '10px',
-                  border: '2px solid var(--border-color)',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px'
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>New Password</label>
-              <input
-                type="password"
-                placeholder="Enter new password (min 6 characters)"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 15px',
-                  borderRadius: '10px',
-                  border: '2px solid var(--border-color)',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px'
-                }}
-              />
-              <small style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>Password must be at least 6 characters</small>
-            </div>
-
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Confirm New Password</label>
-              <input
-                type="password"
-                placeholder="Confirm new password"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px 15px',
-                  borderRadius: '10px',
-                  border: '2px solid var(--border-color)',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px'
-                }}
-              />
-            </div>
-
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '30px', borderRadius: '20px', maxWidth: '450px', width: '90%' }}>
+            <h3 style={{ color: '#dc3c3c', marginBottom: '20px', textAlign: 'center' }}>Change Password</h3>
+            <input type="password" placeholder="Current Password" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} style={{ width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ddd' }} />
+            <input type="password" placeholder="New Password (min 6 characters)" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} style={{ width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ddd' }} />
+            <input type="password" placeholder="Confirm New Password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} style={{ width: '100%', padding: '12px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #ddd' }} />
             <div style={{ display: 'flex', gap: '15px' }}>
-              <button
-                onClick={handleChangePassword}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #28a745, #20c997)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  opacity: loading ? 0.7 : 1
-                }}
-              >
-                {loading ? "Updating..." : "✅ Update Password"}
-              </button>
-              <button
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'linear-gradient(135deg, #6c757d, #5a6268)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '15px',
-                  fontWeight: '600'
-                }}
-              >
-                Cancel
-              </button>
+              <button onClick={handleChangePassword} style={{ flex: 1, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Update Password</button>
+              <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Back Button */}
-      <div style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button
-          onClick={() => {
-            if (profile.role === "admin") navigate("/admin");
-            else if (profile.role === "receptionist") navigate("/receptionist");
-            else if (profile.role === "waiter") navigate("/waiter");
-            else navigate("/");
-          }}
-          style={{
-            padding: '10px 25px',
-            background: 'transparent',
-            border: '2px solid #dc3c3c',
-            color: '#dc3c3c',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.3s ease'
-          }}
-        >
-          ← Back to Dashboard
-        </button>
-      </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from {
-            transform: scale(0.9);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        input:focus, textarea:focus {
-          outline: none;
-          border-color: #17a2b8 !important;
-          box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1);
-        }
-      `}</style>
+      <button onClick={() => navigate(-1)} style={{ display: 'block', margin: '20px auto', padding: '10px 20px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>← Back</button>
     </div>
   );
 }
