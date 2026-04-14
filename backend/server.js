@@ -13,27 +13,9 @@ const task = require("./routes/task");
 
 const app = express();
 
-// CORS configuration - Allow multiple origins
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'https://hotel-management-system.vercel.app',
-  'https://hotel-management-system-git-main.vercel.app',
-  process.env.FRONTEND_URL
-].filter(Boolean);
-
+// TEMPORARY - Allow all origins for testing
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1 && process.env.NODE_ENV === 'production') {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  origin: true,
   credentials: true
 }));
 
