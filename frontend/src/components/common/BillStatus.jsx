@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import API_URL from "../../api/config";
 
 export default function BillStatus({ roomNo }) {
   const [bill, setBill] = useState(null);

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import ThemeToggle from "../ThemeToggle";
+import API_URL from "../../api/config";
 
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState({
@@ -27,10 +28,10 @@ export default function AdminDashboard({ user }) {
     try {
       setLoading(true);
       const [bookingsRes, foodRes, tablesRes, billsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/booking"),
-        axios.get("http://localhost:5000/api/food"),
-        axios.get("http://localhost:5000/api/table"),
-        axios.get("http://localhost:5000/api/billing")
+        axios.get(`${API_URL}/booking`),
+        axios.get(`${API_URL}/food`),
+        axios.get(`${API_URL}/table`),
+        axios.get(`${API_URL}/billing`)
       ]);
       
       const bookings = bookingsRes.data;
@@ -68,7 +69,6 @@ export default function AdminDashboard({ user }) {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px', minHeight: '100vh' }}>
-      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -87,7 +87,6 @@ export default function AdminDashboard({ user }) {
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          {/* Profile Dropdown - Fixed Visibility */}
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <div 
               onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -127,62 +126,23 @@ export default function AdminDashboard({ user }) {
                   <strong style={{ color: 'var(--text-primary)' }}>{user?.name}</strong>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '5px' }}>{user?.role}</p>
                 </div>
-                <Link 
-                  to="/profile" 
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 20px',
-                    textDecoration: 'none',
-                    color: 'var(--text-primary)',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onClick={() => setDropdownOpen(false)}
-                >
-                  👤 My Profile
-                </Link>
+                <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px', textDecoration: 'none', color: 'var(--text-primary)' }} onClick={() => setDropdownOpen(false)}>👤 My Profile</Link>
                 <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
-                <button 
-                  onClick={logout}
-                  style={{
-                    width: '100%',
-                    padding: '12px 20px',
-                    background: 'none',
-                    border: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    color: '#dc3545',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    fontSize: '14px'
-                  }}
-                >
-                  🚪 Logout
-                </button>
+                <button onClick={logout} style={{ width: '100%', padding: '12px 20px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px' }}>🚪 Logout</button>
               </div>
             )}
           </div>
-          
           <ThemeToggle />
         </div>
       </div>
 
       <style>{`
         @keyframes fadeInDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
 
-      {/* Stats Cards */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '50px' }}><div className="loading-spinner"></div><p>Loading statistics...</p></div>
       ) : (
@@ -226,23 +186,10 @@ export default function AdminDashboard({ user }) {
               <h3>Bill Summary</h3>
               <p>Total: {stats.totalBills} | Paid: {stats.paidBills} | Unpaid: {stats.unpaidBills}</p>
             </div>
-            <Link to="/admin/task-distribution" className="dashboard-link" style={{
-  background: 'linear-gradient(135deg, #17a2b8, #138496)',
-  padding: '20px',
-  borderRadius: '15px',
-  textDecoration: 'none',
-  color: 'white',
-  textAlign: 'center'
-}}>
-  <div style={{ fontSize: '2rem' }}>📊</div>
-  <h3>Task Distribution</h3>
-  <p>View and rebalance tasks</p>
-</Link>
           </div>
         </>
       )}
       
-      {/* Management Tools */}
       <div style={{ background: 'var(--bg-card)', borderRadius: '20px', padding: '25px', marginTop: '20px' }}>
         <h2 style={{ color: '#dc3c3c', marginBottom: '20px', borderLeft: '4px solid #dc3c3c', paddingLeft: '15px' }}>🛠️ Management Tools</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
@@ -251,6 +198,7 @@ export default function AdminDashboard({ user }) {
           <Link to="/admin/tasks" className="dashboard-link" style={{ background: 'linear-gradient(135deg, #ffc107, #e0a800)', padding: '20px', borderRadius: '15px', textDecoration: 'none', color: '#333', textAlign: 'center' }}><div style={{ fontSize: '2rem' }}>✅</div><h3>Assign Tasks</h3><p>Create staff tasks</p></Link>
           <Link to="/admin/reports" className="dashboard-link" style={{ background: 'linear-gradient(135deg, #17a2b8, #138496)', padding: '20px', borderRadius: '15px', textDecoration: 'none', color: 'white', textAlign: 'center' }}><div style={{ fontSize: '2rem' }}>📈</div><h3>View Reports</h3><p>Generate reports</p></Link>
           <Link to="/admin/bills" className="dashboard-link" style={{ background: 'linear-gradient(135deg, #dc3c3c, #b83232)', padding: '20px', borderRadius: '15px', textDecoration: 'none', color: 'white', textAlign: 'center' }}><div style={{ fontSize: '2rem' }}>💰</div><h3>Bill Management</h3><p>Manage all bills</p></Link>
+          <Link to="/admin/task-distribution" className="dashboard-link" style={{ background: 'linear-gradient(135deg, #17a2b8, #138496)', padding: '20px', borderRadius: '15px', textDecoration: 'none', color: 'white', textAlign: 'center' }}><div style={{ fontSize: '2rem' }}>📊</div><h3>Task Distribution</h3><p>View and rebalance tasks</p></Link>
         </div>
       </div>
     </div>

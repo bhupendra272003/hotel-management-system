@@ -64,6 +64,7 @@ router.get("/profile/:userId", async (req, res) => {
     }
     res.json(user);
   } catch (error) {
+    console.error("Error fetching profile:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -77,13 +78,19 @@ router.put("/profile/:userId", async (req, res) => {
       { name, phone, address, salary, updatedAt: new Date() },
       { new: true }
     ).select("-password");
+    
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
     res.json({ success: true, user });
   } catch (error) {
+    console.error("Error updating profile:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update password - FIXED VERSION
+// Change password
 router.put("/change-password/:userId", async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -98,7 +105,7 @@ router.put("/change-password/:userId", async (req, res) => {
     
     // Check current password
     if (user.password !== currentPassword) {
-      console.log("Password mismatch: stored=", user.password, "provided=", currentPassword);
+      console.log("Password mismatch");
       return res.status(400).json({ error: "Current password is incorrect" });
     }
     

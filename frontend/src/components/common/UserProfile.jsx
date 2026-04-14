@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import ThemeToggle from "../ThemeToggle";
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export default function UserProfile({ user, setUser }) {
   const [profile, setProfile] = useState({
@@ -24,28 +27,48 @@ export default function UserProfile({ user, setUser }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("User object:", user);
     if (user && user._id) {
       fetchProfile();
+    } else {
+      console.error("No user ID found. User object:", user);
+      setMessage({ type: "error", text: "User not logged in. Please login again." });
     }
   }, [user]);
 
   const fetchProfile = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/auth/profile/${user._id}`);
+      console.log("Fetching profile for user ID:", user._id);
+      console.log("API URL:", `${API_URL}/auth/profile/${user._id}`);
+      
+      const response = await axios.get(`${API_URL}/auth/profile/${user._id}`);
+      console.log("Profile response:", response.data);
+      
       setProfile(response.data);
+      setMessage({ type: "success", text: "Profile loaded successfully!" });
+      setTimeout(() => setMessage(null), 2000);
     } catch (error) {
       console.error("Error fetching profile:", error);
+      console.error("Error details:", error.response?.data);
+      
+      if (error.response?.status === 404) {
+        setMessage({ type: "error", text: "User not found. Please contact support." });
+      } else if (error.response?.status === 401) {
+        setMessage({ type: "error", text: "Unauthorized. Please login again." });
+        navigate("/login");
+      } else {
+        setMessage({ type: "error", text: error.response?.data?.error || "Failed to load profile" });
+      }
     }
   };
 
   const handleUpdateProfile = async () => {
     setLoading(true);
     try {
-      const response = await axios.put(`http://localhost:5000/api/auth/profile/${user._id}`, {
+      const response = await axios.put(`${API_URL}/auth/profile/${user._id}`, {
         name: profile.name,
         phone: profile.phone,
-        address: profile.address,
-        salary: profile.salary
+        address: profile.address
       });
       
       if (response.data.success) {
@@ -55,26 +78,32 @@ export default function UserProfile({ user, setUser }) {
         setTimeout(() => setMessage(null), 3000);
       }
     } catch (error) {
-      setMessage({ type: "error", text: "Failed to update profile" });
+      console.error("Update error:", error);
+      setMessage({ type: "error", text: error.response?.data?.error || "Failed to update profile" });
       setTimeout(() => setMessage(null), 3000);
     }
     setLoading(false);
   };
 
   const handleChangePassword = async () => {
+    if (!passwordData.currentPassword) {
+      setMessage({ type: "error", text: "Please enter current password" });
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      setMessage({ type: "error", text: "New password must be at least 6 characters" });
+      return;
+    }
+    
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setMessage({ type: "error", text: "New passwords do not match" });
       return;
     }
     
-    if (passwordData.newPassword.length < 6) {
-      setMessage({ type: "error", text: "Password must be at least 6 characters" });
-      return;
-    }
-    
     setLoading(true);
     try {
-      const response = await axios.put(`http://localhost:5000/api/auth/change-password/${user._id}`, {
+      const response = await axios.put(`${API_URL}/auth/change-password/${user._id}`, {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       });
@@ -86,15 +115,26 @@ export default function UserProfile({ user, setUser }) {
         setTimeout(() => setMessage(null), 3000);
       }
     } catch (error) {
+      console.error("Password error:", error);
       setMessage({ type: "error", text: error.response?.data?.error || "Failed to change password" });
       setTimeout(() => setMessage(null), 3000);
     }
     setLoading(false);
   };
 
+  // If no user is logged in, show login prompt
+  if (!user || !user._id) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <h2>Please login to view profile</h2>
+        <button onClick={() => navigate("/login")} style={{ padding: '10px 20px', background: '#dc3c3c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Go to Login</button>
+      </div>
+    );
+  }
+
   return (
     <div style={{
-      maxWidth: '800px',
+      maxWidth: '900px',
       margin: '40px auto',
       padding: '30px',
       background: 'var(--bg-card)',
@@ -102,15 +142,19 @@ export default function UserProfile({ user, setUser }) {
       boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
     }}>
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-        <div style={{ fontSize: '4rem' }}>👤</div>
-        <h2 style={{ color: '#dc3c3c', marginTop: '10px' }}>My Profile</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Manage your account information</p>
+        <div style={{ fontSize: '4rem', marginBottom: '10px' }}>👤</div>
+        <h1 style={{ fontSize: '2rem', color: '#dc3c3c', marginBottom: '5px' }}>My Profile</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>Manage your account information and security</p>
       </div>
-      
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+        <ThemeToggle />
+      </div>
+
       {message && (
         <div style={{
           padding: '12px 20px',
-          borderRadius: '8px',
+          borderRadius: '10px',
           marginBottom: '20px',
           textAlign: 'center',
           backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
@@ -120,362 +164,104 @@ export default function UserProfile({ user, setUser }) {
           {message.text}
         </div>
       )}
-      
+
       {/* Profile Information */}
       <div style={{ marginBottom: '30px' }}>
-        <h3 style={{ color: 'var(--text-primary)', marginBottom: '20px', borderLeft: '4px solid #dc3c3c', paddingLeft: '15px' }}>
-          Personal Information
-        </h3>
+        <h3 style={{ borderLeft: '4px solid #dc3c3c', paddingLeft: '15px', marginBottom: '20px' }}>📋 Personal Information</h3>
         
         <div style={{ display: 'grid', gap: '20px' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-              Full Name
-            </label>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Full Name</label>
             {editMode ? (
               <input
                 type="text"
                 value={profile.name}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '10px',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)'
-                }}
+                style={{ width: '100%', padding: '12px 15px', borderRadius: '10px', border: '2px solid var(--border-color)', background: 'var(--bg-glass)', color: 'var(--text-primary)' }}
               />
             ) : (
-              <p style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '10px', color: 'var(--text-primary)' }}>
-                {profile.name}
-              </p>
+              <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>{profile.name || "Not set"}</div>
             )}
           </div>
-          
+
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-              Email Address
-            </label>
-            <p style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '10px', color: 'var(--text-primary)' }}>
-              {profile.email}
-            </p>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Email Address</label>
+            <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>{profile.email}</div>
           </div>
-          
+
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-              Phone Number
-            </label>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Phone Number</label>
             {editMode ? (
               <input
                 type="tel"
                 value={profile.phone}
                 onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '10px',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)'
-                }}
+                style={{ width: '100%', padding: '12px 15px', borderRadius: '10px', border: '2px solid var(--border-color)', background: 'var(--bg-glass)', color: 'var(--text-primary)' }}
               />
             ) : (
-              <p style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '10px', color: 'var(--text-primary)' }}>
-                {profile.phone || "Not provided"}
-              </p>
+              <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>{profile.phone || "Not provided"}</div>
             )}
           </div>
-          
+
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-              Address
-            </label>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Address</label>
             {editMode ? (
               <textarea
                 value={profile.address}
                 onChange={(e) => setProfile({ ...profile, address: e.target.value })}
                 rows="3"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '10px',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)'
-                }}
+                style={{ width: '100%', padding: '12px 15px', borderRadius: '10px', border: '2px solid var(--border-color)', background: 'var(--bg-glass)', color: 'var(--text-primary)' }}
               />
             ) : (
-              <p style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '10px', color: 'var(--text-primary)' }}>
-                {profile.address || "Not provided"}
-              </p>
+              <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px', minHeight: '80px' }}>{profile.address || "Not provided"}</div>
             )}
           </div>
-          
-          {profile.role === "admin" && (
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                Salary
-              </label>
-              {editMode ? (
-                <input
-                  type="number"
-                  value={profile.salary}
-                  onChange={(e) => setProfile({ ...profile, salary: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '2px solid var(--border-color)',
-                    borderRadius: '10px',
-                    background: 'var(--bg-glass)',
-                    color: 'var(--text-primary)'
-                  }}
-                />
-              ) : (
-                <p style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '10px', color: 'var(--text-primary)' }}>
-                  ₹{profile.salary?.toLocaleString() || "0"}
-                </p>
-              )}
-            </div>
-          )}
-          
+
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-              Role
-            </label>
-            <p style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '10px', color: '#dc3c3c', fontWeight: '600', textTransform: 'capitalize' }}>
-              {profile.role}
-            </p>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Role</label>
+            <div style={{ padding: '12px 15px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '10px', color: 'white', fontWeight: '600', textTransform: 'capitalize' }}>{profile.role || "User"}</div>
           </div>
-          
+
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>
-              Member Since
-            </label>
-            <p style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '10px', color: 'var(--text-primary)' }}>
-              {new Date(profile.joinDate).toLocaleDateString()}
-            </p>
+            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: '500' }}>Member Since</label>
+            <div style={{ padding: '12px 15px', background: 'var(--bg-glass)', borderRadius: '10px' }}>
+              {profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "N/A"}
+            </div>
           </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '15px', marginTop: '25px' }}>
+
+        <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
           {!editMode ? (
             <>
-              <button
-                onClick={() => setEditMode(true)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#dc3c3c',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                ✏️ Edit Profile
-              </button>
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                🔒 Change Password
-              </button>
+              <button onClick={() => setEditMode(true)} style={{ flex: 1, padding: '12px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>✏️ Edit Profile</button>
+              <button onClick={() => setShowPasswordModal(true)} style={{ flex: 1, padding: '12px', background: '#ffc107', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>🔒 Change Password</button>
             </>
           ) : (
             <>
-              <button
-                onClick={handleUpdateProfile}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  opacity: loading ? 0.7 : 1
-                }}
-              >
-                {loading ? "Saving..." : "💾 Save Changes"}
-              </button>
-              <button
-                onClick={() => {
-                  setEditMode(false);
-                  fetchProfile();
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                ❌ Cancel
-              </button>
+              <button onClick={handleUpdateProfile} disabled={loading} style={{ flex: 1, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>{loading ? "Saving..." : "💾 Save Changes"}</button>
+              <button onClick={() => { setEditMode(false); fetchProfile(); }} style={{ flex: 1, padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>❌ Cancel</button>
             </>
           )}
         </div>
       </div>
-      
-      {/* Password Change Modal */}
+
+      {/* Password Modal */}
       {showPasswordModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'var(--bg-card)',
-            padding: '30px',
-            borderRadius: '20px',
-            maxWidth: '450px',
-            width: '90%'
-          }}>
-            <h3 style={{ color: '#dc3c3c', marginBottom: '20px', textAlign: 'center' }}>
-              Change Password
-            </h3>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>
-                Current Password
-              </label>
-              <input
-                type="password"
-                value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '10px',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)'
-                }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>
-                New Password
-              </label>
-              <input
-                type="password"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '10px',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)'
-                }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '10px',
-                  background: 'var(--bg-glass)',
-                  color: 'var(--text-primary)'
-                }}
-              />
-            </div>
-            
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '30px', borderRadius: '20px', maxWidth: '450px', width: '90%' }}>
+            <h3 style={{ color: '#dc3c3c', marginBottom: '20px', textAlign: 'center' }}>Change Password</h3>
+            <input type="password" placeholder="Current Password" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} style={{ width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ddd' }} />
+            <input type="password" placeholder="New Password (min 6 characters)" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} style={{ width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ddd' }} />
+            <input type="password" placeholder="Confirm New Password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} style={{ width: '100%', padding: '12px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #ddd' }} />
             <div style={{ display: 'flex', gap: '15px' }}>
-              <button
-                onClick={handleChangePassword}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                {loading ? "Processing..." : "Update Password"}
-              </button>
-              <button
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Cancel
-              </button>
+              <button onClick={handleChangePassword} style={{ flex: 1, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Update Password</button>
+              <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         </div>
       )}
-      
-      <div style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button
-          onClick={() => {
-            if (profile.role === "admin") navigate("/admin");
-            else if (profile.role === "receptionist") navigate("/receptionist");
-            else navigate("/");
-          }}
-          style={{
-            padding: '10px 20px',
-            background: 'transparent',
-            border: '2px solid #dc3c3c',
-            color: '#dc3c3c',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          ← Back to Dashboard
-        </button>
-      </div>
+
+      <button onClick={() => navigate(-1)} style={{ display: 'block', margin: '20px auto', padding: '10px 20px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>← Back</button>
     </div>
   );
 }
