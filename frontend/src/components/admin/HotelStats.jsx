@@ -166,4 +166,61 @@ export default function HotelStats() {
           <div style={{ background: "linear-gradient(135deg, #e3f2fd 0%, #bbdef5 100%)", padding: "25px", borderRadius: "20px", cursor: "pointer" }} onClick={() => navigate("/admin/bills")}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}><div style={{ fontSize: "36px" }}>🍽️</div><div style={{ fontSize: "28px", fontWeight: "bold", color: "#17a2b8" }}>₹{stats.revenue.byCategory.table.toLocaleString()}</div></div>
             <div style={{ fontSize: "16px", fontWeight: "600", color: "#333", marginBottom: "5px" }}>Table Revenue</div>
-            <div style={{ fontSize: "13px", color: "#666" }}>From table bookings and
+            <div style={{ fontSize: "13px", color: "#666" }}>From table bookings and orders</div>
+          </div>
+        </div>
+      </div>
+      
+      <div style={{ marginBottom: "40px" }}>
+        <h2 style={{ fontSize: "20px", marginBottom: "20px", color: "#333", paddingLeft: "10px", borderLeft: "4px solid #dc3c3c" }}>📊 Business Metrics</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "25px" }}>
+          <div style={{ background: "#ffffff", padding: "25px", borderRadius: "20px", border: "1px solid #e8e8e8" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "20px" }}><div style={{ fontSize: "40px" }}>🏠</div><div><div style={{ fontSize: "24px", fontWeight: "bold", color: "#dc3c3c" }}>{stats.rooms.totalBookings}</div><div style={{ fontSize: "14px", color: "#666" }}>Total Room Bookings</div></div></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid #f0f0f0" }}><span style={{ color: "#666" }}>Active Check-ins</span><span style={{ fontWeight: "600", color: "#28a745" }}>{stats.rooms.activeCheckins}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}><span style={{ color: "#666" }}>Completed Stays</span><span style={{ fontWeight: "600", color: "#6c757d" }}>{stats.rooms.completed}</span></div>
+          </div>
+          <div style={{ background: "#ffffff", padding: "25px", borderRadius: "20px", border: "1px solid #e8e8e8" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "20px" }}><div style={{ fontSize: "40px" }}>🍕</div><div><div style={{ fontSize: "24px", fontWeight: "bold", color: "#ff9800" }}>{stats.food.totalOrders}</div><div style={{ fontSize: "14px", color: "#666" }}>Total Food Orders</div></div></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid #f0f0f0" }}><span style={{ color: "#666" }}>Paid Orders</span><span style={{ fontWeight: "600", color: "#28a745" }}>{stats.food.paidOrders}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}><span style={{ color: "#666" }}>Total Value</span><span style={{ fontWeight: "600", color: "#ff9800" }}>₹{stats.food.totalValue.toLocaleString()}</span></div>
+          </div>
+          <div style={{ background: "#ffffff", padding: "25px", borderRadius: "20px", border: "1px solid #e8e8e8" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "20px" }}><div style={{ fontSize: "40px" }}>🍽️</div><div><div style={{ fontSize: "24px", fontWeight: "bold", color: "#17a2b8" }}>{stats.tables.totalBookings}</div><div style={{ fontSize: "14px", color: "#666" }}>Total Table Bookings</div></div></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid #f0f0f0" }}><span style={{ color: "#666" }}>Confirmed</span><span style={{ fontWeight: "600", color: "#28a745" }}>{stats.tables.confirmed}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}><span style={{ color: "#666" }}>Total Value</span><span style={{ fontWeight: "600", color: "#17a2b8" }}>₹{stats.tables.totalValue.toLocaleString()}</span></div>
+          </div>
+        </div>
+      </div>
+      
+      {stats.recentTransactions.length > 0 && (
+        <div>
+          <h2 style={{ fontSize: "20px", marginBottom: "20px", color: "#333", paddingLeft: "10px", borderLeft: "4px solid #dc3c3c" }}>📋 Recent Transactions</h2>
+          <div style={{ overflowX: "auto", borderRadius: "15px", boxShadow: "0 5px 15px rgba(0,0,0,0.05)" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "12px", overflow: "hidden" }}>
+              <thead>
+                <tr style={{ background: "linear-gradient(135deg, #dc3c3c, #b83232)", color: "white" }}>
+                  <th style={{ padding: "15px", textAlign: "left" }}>Bill ID</th><th style={{ padding: "15px", textAlign: "left" }}>Guest Name</th><th style={{ padding: "15px", textAlign: "left" }}>Amount</th><th style={{ padding: "15px", textAlign: "left" }}>Payment Method</th><th style={{ padding: "15px", textAlign: "left" }}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recentTransactions.map((transaction, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid #e0e0e0", background: idx % 2 === 0 ? "#fafafa" : "white" }}>
+                    <td style={{ padding: "12px 15px", color: "#333", fontWeight: "500" }}>#{transaction._id?.slice(-6)}</td>
+                    <td style={{ padding: "12px 15px", color: "#333" }}>{transaction.guestName}</td>
+                    <td style={{ padding: "12px 15px", color: "#28a745", fontWeight: "600" }}>₹{transaction.total?.toLocaleString()}</td>
+                    <td style={{ padding: "12px 15px", color: "#555" }}>{transaction.paymentMethod?.toUpperCase() || "CASH"}</td>
+                    <td style={{ padding: "12px 15px", color: "#555" }}>{new Date(transaction.paymentDate || transaction.createdAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
+      <div style={{ textAlign: "center", marginTop: "40px" }}>
+        <button onClick={() => navigate("/admin")} style={{ padding: "12px 25px", background: "#6c757d", color: "white", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "14px", fontWeight: "500" }}>← Back to Dashboard</button>
+      </div>
+    </div>
+  );
+}
