@@ -18,7 +18,7 @@ export default function Login({ setUser }) {
 
   const checkBackendHealth = async () => {
     try {
-      await axios.get(`${API_URL}/test`, { timeout: 5000 });
+      await axios.get(`${API_URL}/api/test`, { timeout: 5000 });
       setBackendStatus("connected");
       console.log("✅ Backend connected at:", API_URL);
     } catch (error) {
@@ -38,7 +38,7 @@ export default function Login({ setUser }) {
     setError("");
 
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+      const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
       
       if (res.data.success) {
         localStorage.setItem("token", "loggedin");
