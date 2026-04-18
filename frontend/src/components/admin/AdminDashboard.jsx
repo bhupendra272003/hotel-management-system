@@ -18,8 +18,10 @@ export default function AdminDashboard({ user }) {
   const fetchStats = async () => {
     try {
       const [bookingsRes, foodRes, tablesRes, billsRes] = await Promise.all([
-        axios.get(`${API_URL}/booking`), axios.get(`${API_URL}/food`),
-        axios.get(`${API_URL}/table`), axios.get(`${API_URL}/billing`)
+        axios.get(`${API_URL}/api/booking`),
+        axios.get(`${API_URL}/api/food`),
+        axios.get(`${API_URL}/api/table`),
+        axios.get(`${API_URL}/api/billing`)
       ]);
       
       const bookings = bookingsRes.data;
