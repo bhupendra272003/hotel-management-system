@@ -15,7 +15,7 @@ export default function CustomerBooking() {
 
   const fetchAvailableRooms = async () => {
     try {
-      const res = await axios.get(`${API_URL}/booking`);
+      const res = await axios.get(`${API_URL}/api/booking`);
       const bookedRooms = res.data.filter(b => b.status === "Booked" || b.status === "CheckedIn").map(b => b.roomNo);
       const allRooms = ["101", "102", "103", "104", "105", "201", "202", "203", "204", "205"];
       setAvailableRooms(allRooms.filter(room => !bookedRooms.includes(room)));
@@ -24,7 +24,7 @@ export default function CustomerBooking() {
 
   const submit = async () => {
     try {
-      await axios.post(`${API_URL}/booking`, form);
+      await axios.post(`${API_URL}/api/booking`, form);
       alert("Room Booked Successfully!");
       navigate("/");
     } catch (error) { alert("Booking failed!"); }

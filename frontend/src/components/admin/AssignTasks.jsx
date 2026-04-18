@@ -21,7 +21,7 @@ export default function AssignTasks() {
 
   const fetchTasks = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/tasks");
+      const res = await axios.get(`${API_URL}/tasks`);
       setTasks(res.data);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -30,7 +30,7 @@ export default function AssignTasks() {
 
   const fetchStaff = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/auth/staff");
+      const res = await axios.get(`${API_URL}/auth/staff`);
       setStaff(res.data);
     } catch (error) {
       console.error("Error fetching staff:", error);
@@ -43,7 +43,7 @@ export default function AssignTasks() {
       return;
     }
     try {
-      await axios.post("http://localhost:5000/api/tasks", newTask);
+      await axios.post(`${API_URL}/tasks`, newTask);
       alert("✅ Task assigned successfully!");
       setNewTask({ title: "", description: "", assignedTo: "", priority: "medium" });
       fetchTasks();
@@ -53,13 +53,13 @@ export default function AssignTasks() {
   };
 
   const updateTaskStatus = async (id, status) => {
-    await axios.put(`http://localhost:5000/api/tasks/${id}`, { status });
+    await axios.put(`${API_URL}/tasks/${id}`, { status });
     fetchTasks();
   };
 
   const deleteTask = async (id) => {
     if (window.confirm("Delete this task?")) {
-      await axios.delete(`http://localhost:5000/api/tasks/${id}`);
+      await axios.delete(`${API_URL}/tasks/${id}`);
       fetchTasks();
     }
   };
@@ -74,63 +74,42 @@ export default function AssignTasks() {
   };
 
   return (
-    <div className="assign-tasks">
-      <h2>✅ Assign Tasks to Staff</h2>
+    <div className="assign-tasks" style={{ maxWidth: "1200px", margin: "40px auto", padding: "20px" }}>
+      <h2 style={{ textAlign: "center", color: "#dc3c3c" }}>✅ Assign Tasks to Staff</h2>
       
-      <div className="new-task">
+      <div className="new-task" style={{ background: "var(--bg-card)", padding: "20px", borderRadius: "15px", marginBottom: "30px" }}>
         <h3>Create New Task</h3>
-        <input 
-          placeholder="Task Title *" 
-          onChange={e => setNewTask({...newTask, title: e.target.value})}
-          value={newTask.title}
-        />
-        <textarea 
-          placeholder="Task Description" 
-          onChange={e => setNewTask({...newTask, description: e.target.value})}
-          value={newTask.description}
-          rows="3"
-        />
-        <select onChange={e => setNewTask({...newTask, assignedTo: e.target.value})} value={newTask.assignedTo}>
+        <input placeholder="Task Title *" onChange={e => setNewTask({...newTask, title: e.target.value})} value={newTask.title} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)" }} />
+        <textarea placeholder="Task Description" onChange={e => setNewTask({...newTask, description: e.target.value})} value={newTask.description} rows="3" style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)" }} />
+        <select onChange={e => setNewTask({...newTask, assignedTo: e.target.value})} value={newTask.assignedTo} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)" }}>
           <option value="">Assign to Staff Member *</option>
-          {staff.map(s => (
-            <option key={s._id} value={s._id}>{s.name} ({s.role})</option>
-          ))}
+          {staff.map(s => <option key={s._id} value={s._id}>{s.name} ({s.role})</option>)}
         </select>
-        <select onChange={e => setNewTask({...newTask, priority: e.target.value})} value={newTask.priority}>
+        <select onChange={e => setNewTask({...newTask, priority: e.target.value})} value={newTask.priority} style={{ width: "100%", padding: "12px", margin: "10px 0", borderRadius: "8px", border: "2px solid var(--border-color)" }}>
           <option value="low">Low Priority</option>
           <option value="medium">Medium Priority</option>
           <option value="high">High Priority</option>
         </select>
-        <button onClick={assignTask}>Assign Task</button>
+        <button onClick={assignTask} style={{ padding: "12px 24px", background: "#dc3c3c", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", marginTop: "10px" }}>Assign Task</button>
       </div>
       
       <div className="tasks-list">
         <h3>Active Tasks</h3>
-        {tasks.length === 0 ? (
-          <p>No active tasks</p>
-        ) : (
-          <div className="tasks-grid">
+        {tasks.length === 0 ? <p>No active tasks</p> : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "20px" }}>
             {tasks.map(task => (
-              <div key={task._id} className="task-card" style={{borderLeftColor: getPriorityColor(task.priority)}}>
-                <div className="task-header">
+              <div key={task._id} style={{ background: "var(--bg-card)", borderRadius: "12px", padding: "15px", borderLeft: `4px solid ${getPriorityColor(task.priority)}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h4>{task.title}</h4>
-                  <span className={`priority ${task.priority}`}>{task.priority}</span>
+                  <span style={{ padding: "2px 8px", borderRadius: "12px", fontSize: "11px", background: task.priority === "high" ? "#ff4444" : task.priority === "medium" ? "#ffaa00" : "#44aa44", color: "white" }}>{task.priority}</span>
                 </div>
-                <p className="task-desc">{task.description}</p>
-                <p className="task-assignee">
-                  <strong>Assigned to:</strong> {task.assignedTo?.name || "Unknown"}
-                </p>
-                <p className="task-status">
-                  <strong>Status:</strong> {task.status}
-                </p>
-                <div className="task-actions">
-                  {task.status === "pending" && (
-                    <button onClick={() => updateTaskStatus(task._id, "in-progress")}>Start Task</button>
-                  )}
-                  {task.status === "in-progress" && (
-                    <button onClick={() => updateTaskStatus(task._id, "completed")}>Complete Task</button>
-                  )}
-                  <button onClick={() => deleteTask(task._id)} className="delete-btn">Delete</button>
+                <p>{task.description}</p>
+                <p><strong>Assigned to:</strong> {task.assignedTo?.name || "Unknown"}</p>
+                <p><strong>Status:</strong> {task.status}</p>
+                <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                  {task.status === "pending" && <button onClick={() => updateTaskStatus(task._id, "in-progress")} style={{ padding: "6px 12px", background: "#17a2b8", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>Start</button>}
+                  {task.status === "in-progress" && <button onClick={() => updateTaskStatus(task._id, "completed")} style={{ padding: "6px 12px", background: "#28a745", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>Complete</button>}
+                  <button onClick={() => deleteTask(task._id)} style={{ padding: "6px 12px", background: "#dc3545", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>Delete</button>
                 </div>
               </div>
             ))}
@@ -138,7 +117,7 @@ export default function AssignTasks() {
         )}
       </div>
       
-      <button onClick={() => navigate("/admin")} className="back-btn">Back to Dashboard</button>
+      <button onClick={() => navigate("/admin")} style={{ marginTop: "30px", padding: "10px 20px", background: "#6c757d", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>← Back to Dashboard</button>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const axios = require("axios");
 require("dotenv").config();
 
 const auth = require("./routes/auth");
@@ -122,9 +123,26 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "Server is running!", status: "ok" });
 });
 
+// Keep-alive ping to prevent spin-down (Render free tier)
+const KEEP_ALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutes
+const BACKEND_URL = process.env.BACKEND_URL || 'https://hotelmna.onrender.com';
+
+setInterval(async () => {
+  try {
+    const response = await axios.get(`${BACKEND_URL}/api/health`, { timeout: 10000 });
+    if (response.status === 200) {
+      console.log(`✅ Keep-alive ping sent at ${new Date().toLocaleTimeString()}`);
+    }
+  } catch (error) {
+    console.log(`⚠️ Keep-alive ping failed: ${error.message}`);
+  }
+}, KEEP_ALIVE_INTERVAL);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📋 Test API: http://localhost:${PORT}/api/test`);
+  console.log(`📋 Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`🔄 Keep-alive ping will run every ${KEEP_ALIVE_INTERVAL / 60000} minutes`);
 });

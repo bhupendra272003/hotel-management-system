@@ -18,13 +18,19 @@ export default function Login({ setUser }) {
 
   const checkBackendHealth = async () => {
     try {
-      await axios.get(`${API_URL}/test`, { timeout: 5000 });
+      // Increased timeout for free tier wake-up
+      await axios.get(`${API_URL}/test`, { timeout: 60000 });
       setBackendStatus("connected");
       console.log("✅ Backend connected at:", API_URL);
     } catch (error) {
       console.error("❌ Backend connection failed:", error);
       setBackendStatus("disconnected");
-      setError(`Cannot connect to backend at ${API_URL}`);
+      // Don't show error immediately - backend might be waking up
+      setTimeout(() => {
+        if (backendStatus === "disconnected") {
+          setError("⏳ Backend is waking up from sleep mode. Please wait 30 seconds and try again.");
+        }
+      }, 5000);
     }
   };
 
@@ -37,28 +43,41 @@ export default function Login({ setUser }) {
     setLoading(true);
     setError("");
 
-    try {
-      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
-      
-      if (res.data.success) {
-        localStorage.setItem("token", "loggedin");
-        localStorage.setItem("userRole", res.data.role);
-        localStorage.setItem("userId", res.data.user._id);
-        localStorage.setItem("userName", res.data.user.name);
-        setUser(res.data.user);
+    // Retry logic for waking up backend
+    let retries = 3;
+    let success = false;
+    
+    while (retries > 0 && !success) {
+      try {
+        const res = await axios.post(`${API_URL}/auth/login`, { email, password }, { timeout: 60000 });
         
-        if (res.data.role === "admin") navigate("/admin");
-        else if (res.data.role === "receptionist") navigate("/receptionist");
-        else if (res.data.role === "waiter") navigate("/waiter");
-        else navigate("/dashboard");
-      } else {
-        setError(res.data.message || "Invalid credentials!");
+        if (res.data.success) {
+          success = true;
+          localStorage.setItem("token", "loggedin");
+          localStorage.setItem("userRole", res.data.role);
+          localStorage.setItem("userId", res.data.user._id);
+          localStorage.setItem("userName", res.data.user.name);
+          setUser(res.data.user);
+          
+          if (res.data.role === "admin") navigate("/admin");
+          else if (res.data.role === "receptionist") navigate("/receptionist");
+          else if (res.data.role === "waiter") navigate("/waiter");
+          else navigate("/dashboard");
+        } else {
+          setError(res.data.message || "Invalid credentials!");
+          success = true;
+        }
+      } catch (error) {
+        retries--;
+        if (retries === 0) {
+          setError("Unable to connect to backend. Please ensure the server is running.");
+        } else {
+          setError(`Attempting to connect... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
-    } catch (error) {
-      setError("Login failed! Please try again.");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
@@ -75,8 +94,8 @@ export default function Login({ setUser }) {
           <div style={{ fontSize: '4rem', marginBottom: '10px' }}>🏨</div>
           <h1 style={{ fontSize: '1.8rem', color: '#dc3c3c', marginBottom: '5px' }}>Grand Hotel</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Staff Login Portal</p>
-          {backendStatus === "connected" && <p style={{ fontSize: '12px', color: '#28a745' }}>✅ Backend connected</p>}
-          {backendStatus === "disconnected" && <p style={{ fontSize: '12px', color: '#dc3545' }}>❌ Backend not reachable</p>}
+          {backendStatus === "connected" && <p style={{ fontSize: '12px', color: '#28a745', marginTop: '10px' }}>✅ Backend connected</p>}
+          {backendStatus === "disconnected" && <p style={{ fontSize: '12px', color: '#ffc107', marginTop: '10px' }}>⏳ Connecting to backend...</p>}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
@@ -100,8 +119,8 @@ export default function Login({ setUser }) {
 
           {error && <div style={{ padding: '12px', borderRadius: '10px', background: '#f8d7da', color: '#721c24', textAlign: 'center', marginBottom: '20px' }}>{error}</div>}
 
-          <button onClick={login} disabled={loading || backendStatus === "disconnected"}
-            style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #dc3c3c, #b83232)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: (loading || backendStatus === "disconnected") ? 'not-allowed' : 'pointer', opacity: (loading || backendStatus === "disconnected") ? 0.7 : 1 }}>
+          <button onClick={login} disabled={loading}
+            style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #dc3c3c, #b83232)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
             {loading ? "Logging in..." : "🔐 Login"}
           </button>
         </div>

@@ -20,8 +20,10 @@ export default function HotelStats() {
     try {
       setLoading(true);
       const [billingRes, foodRes, tableRes, bookingRes] = await Promise.all([
-        axios.get(`${API_URL}/billing`), axios.get(`${API_URL}/food`),
-        axios.get(`${API_URL}/table`), axios.get(`${API_URL}/booking`)
+        axios.get(`${API_URL}/api/billing`),
+        axios.get(`${API_URL}/api/food`),
+        axios.get(`${API_URL}/api/table`),
+        axios.get(`${API_URL}/api/booking`)
       ]);
       
       const bills = billingRes.data;

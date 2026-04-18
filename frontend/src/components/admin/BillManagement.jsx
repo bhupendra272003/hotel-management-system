@@ -27,7 +27,7 @@ export default function BillManagement() {
   const fetchBills = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/billing`);
+      const response = await axios.get(`${API_URL}/api/billing`);
       setBills(response.data);
     } catch (error) {
       setMessage({ type: "error", text: "Failed to fetch bills" });
@@ -39,7 +39,7 @@ export default function BillManagement() {
   const markAsPaid = async (id) => {
     if (!window.confirm("Mark this bill as paid?")) return;
     try {
-      await axios.put(`${API_URL}/billing/pay/${id}`, { paymentMethod: "cash", paymentStatus: "paid", paymentDate: new Date() });
+      await axios.put(`${API_URL}/api/billing/pay/${id}`, { paymentMethod: "cash", paymentStatus: "paid", paymentDate: new Date() });
       setMessage({ type: "success", text: "✅ Bill marked as paid!" });
       fetchBills();
       setTimeout(() => setMessage(null), 3000);
@@ -51,7 +51,7 @@ export default function BillManagement() {
   const deleteBill = async (id) => {
     if (!window.confirm("Delete this bill?")) return;
     try {
-      await axios.delete(`${API_URL}/billing/${id}`);
+      await axios.delete(`${API_URL}/api/billing/${id}`);
       setMessage({ type: "success", text: "✅ Bill deleted!" });
       fetchBills();
       setTimeout(() => setMessage(null), 3000);
