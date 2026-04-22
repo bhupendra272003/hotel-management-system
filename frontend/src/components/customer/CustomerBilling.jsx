@@ -1,133 +1,255 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import API_URL from "../../api/config";
+import { useAuth } from "../../contexts/AuthContext";
 
-export default function CustomerBilling() {
-  const [roomNo, setRoomNo] = useState("");
-  const [billDetails, setBillDetails] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [message, setMessage] = useState(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const navigate = useNavigate();
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
-  const fetchBill = async () => {
-    if (!roomNo) {
-      setMessage({ type: "error", text: "Please enter your room number" });
-      return;
-    }
-    
-    setLoading(true);
+const CustomerBilling = () => {
+  const { user } = useAuth();
+  const [bills, setBills] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedBill, setSelectedBill] = useState(null);
+
+  const fetchBills = useCallback(async () => {
     try {
-      const [billsRes, bookingsRes] = await Promise.all([
-        axios.get(`${API_URL}/billing/room/${roomNo}`),
-        axios.get(`${API_URL}/booking`)
-      ]);
-      
-      const booking = bookingsRes.data.find(b => b.roomNo === roomNo && b.status === "CheckedIn");
-      
-      if (!booking) {
-        setMessage({ type: "error", text: "No active booking found for this room" });
-        setLoading(false);
-        return;
-      }
-      
-      const roomRate = booking.roomType === "Suite" ? 5000 : booking.roomType === "Deluxe" ? 3000 : 1500;
-      const roomCharge = roomRate * booking.days;
-      const foodTotal = billsRes.data.reduce((sum, b) => sum + (b.foodCharge || 0), 0);
-      const tax = (roomCharge + foodTotal) * 0.18;
-      const total = roomCharge + foodTotal + tax;
-      
-      setBillDetails({
-        guestName: booking.name,
-        roomNo: booking.roomNo,
-        roomType: booking.roomType,
-        days: booking.days,
-        roomCharge,
-        foodTotal,
-        tax,
-        total,
-        bills: billsRes.data
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_URL}/bills/customer`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (error) {
-      setMessage({ type: "error", text: "Error fetching bill details" });
+      setBills(response.data);
+    } catch (err) {
+      setError("Failed to load bills");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchBills();
+  }, [fetchBills]);
+
+  const handleViewBill = (bill) => {
+    setSelectedBill(bill);
   };
 
-  const processPayment = async () => {
-    const transactionId = `PAY${Date.now()}${Math.floor(Math.random() * 1000)}`;
-    setLoading(true);
-    try {
-      for (const bill of billDetails.bills) {
-        await axios.post(`${API_URL}/billing/pay/${bill._id}`, {
-          paymentMethod,
-          transactionId,
-          amount: bill.total
-        });
-      }
-      
-      setMessage({ type: "success", text: `✅ Payment successful! Transaction ID: ${transactionId}` });
-      setShowPaymentModal(false);
-      setTimeout(() => navigate("/"), 2000);
-    } catch (error) {
-      setMessage({ type: "error", text: "Payment failed. Please try again." });
-    }
-    setLoading(false);
+  const handleCloseModal = () => {
+    setSelectedBill(null);
   };
+
+  const handleDownloadBill = async (billId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_URL}/bills/${billId}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      
+      const url = window.URL.createObjectURL(response.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bill_${billId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (err) {
+      setError("Failed to download bill");
+      console.error(err);
+    }
+  };
+
+  const handlePayBill = async (billId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_URL}/bills/${billId}/pay`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      if (response.data.paymentUrl) {
+        window.location.href = response.data.paymentUrl;
+      } else {
+        fetchBills(); // Refresh bills
+        alert("Payment successful!");
+      }
+    } catch (err) {
+      setError("Failed to process payment");
+      console.error(err);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "paid":
+        return "text-green-600 dark:text-green-400";
+      case "pending":
+        return "text-yellow-600 dark:text-yellow-400";
+      case "overdue":
+        return "text-red-600 dark:text-red-400";
+      default:
+        return "text-gray-600 dark:text-gray-400";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-600 dark:text-gray-400">Loading bills...</div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: "600px", margin: "40px auto", padding: "30px", background: "var(--bg-card)", borderRadius: "20px" }}>
-      <h2 style={{ textAlign: "center", color: "#dc3c3c" }}>💰 View Bill & Make Payment</h2>
-      
-      {message && (
-        <div style={{ padding: "12px", borderRadius: "8px", marginBottom: "20px", textAlign: "center", backgroundColor: message.type === "success" ? "#d4edda" : "#f8d7da", color: message.type === "success" ? "#155724" : "#721c24" }}>
-          {message.text}
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            My Bills
+          </h2>
         </div>
-      )}
-      
-      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-        <input placeholder="Enter your Room Number" value={roomNo} onChange={e => setRoomNo(e.target.value)} style={{ flex: 1, padding: "12px", borderRadius: "8px", border: "2px solid var(--border-color)" }} />
-        <button onClick={fetchBill} disabled={loading} style={{ padding: "12px 20px", background: "#2196f3", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>{loading ? "Loading..." : "View Bill"}</button>
+
+        {error && (
+          <div className="m-6 p-4 bg-red-50 dark:bg-red-900 rounded-md">
+            <p className="text-red-700 dark:text-red-200">{error}</p>
+          </div>
+        )}
+
+        {bills.length === 0 ? (
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+            No bills found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Bill ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {bills.map((bill) => (
+                  <tr key={bill._id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {bill.billNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(bill.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      ₹{bill.totalAmount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`font-medium ${getStatusColor(bill.status)}`}>
+                        {bill.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                      <button
+                        onClick={() => handleViewBill(bill)}
+                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => handleDownloadBill(bill._id)}
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                      >
+                        Download
+                      </button>
+                      {bill.status === "pending" && (
+                        <button
+                          onClick={() => handlePayBill(bill._id)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Pay Now
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-      
-      {billDetails && (
-        <div style={{ border: "2px solid var(--border-color)", borderRadius: "12px", padding: "20px", marginBottom: "20px" }}>
-          <h3 style={{ color: "#dc3c3c", marginBottom: "15px" }}>Bill Details</h3>
-          <div><strong>Guest Name:</strong> {billDetails.guestName}</div>
-          <div><strong>Room Number:</strong> {billDetails.roomNo}</div>
-          <div><strong>Room Type:</strong> {billDetails.roomType}</div>
-          <div><strong>Days:</strong> {billDetails.days}</div>
-          <hr style={{ margin: "10px 0" }} />
-          <div><strong>Room Charges:</strong> ₹{billDetails.roomCharge.toLocaleString()}</div>
-          <div><strong>Food Charges:</strong> ₹{billDetails.foodTotal.toLocaleString()}</div>
-          <div><strong>Tax (18%):</strong> ₹{billDetails.tax.toLocaleString()}</div>
-          <hr style={{ margin: "10px 0" }} />
-          <h3 style={{ color: "#28a745" }}>Total Amount: ₹{billDetails.total.toLocaleString()}</h3>
-          <button onClick={() => setShowPaymentModal(true)} style={{ width: "100%", marginTop: "20px", padding: "12px", background: "#4caf50", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>Pay Now</button>
-        </div>
-      )}
-      
-      {showPaymentModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '30px', borderRadius: '20px', maxWidth: '400px', width: '90%' }}>
-            <h3 style={{ color: "#dc3c3c", textAlign: "center" }}>Confirm Payment</h3>
-            <p><strong>Amount:</strong> ₹{billDetails.total.toLocaleString()}</p>
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ width: "100%", padding: "10px", margin: "15px 0", borderRadius: "8px", border: "1px solid #ddd" }}>
-              <option value="cash">💵 Cash</option>
-              <option value="card">💳 Card</option>
-              <option value="upi">📱 UPI</option>
-            </select>
-            <div style={{ display: "flex", gap: "15px" }}>
-              <button onClick={processPayment} style={{ flex: 1, padding: "12px", background: "#28a745", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>Confirm</button>
-              <button onClick={() => setShowPaymentModal(false)} style={{ flex: 1, padding: "12px", background: "#6c757d", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
+
+      {/* Bill Details Modal */}
+      {selectedBill && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Bill Details
+                </h3>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                >
+                  <span className="text-2xl">&times;</span>
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Bill Number
+                  </label>
+                  <p className="mt-1 text-gray-900 dark:text-white">{selectedBill.billNumber}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Date
+                  </label>
+                  <p className="mt-1 text-gray-900 dark:text-white">
+                    {new Date(selectedBill.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Items
+                  </label>
+                  <div className="mt-2 space-y-2">
+                    {selectedBill.items?.map((item, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span>{item.description}</span>
+                        <span>₹{item.amount}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="border-t pt-4">
+                  <div className="flex justify-between font-bold">
+                    <span>Total Amount:</span>
+                    <span>₹{selectedBill.totalAmount}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
-      
-      <button onClick={() => navigate("/")} style={{ width: "100%", marginTop: "20px", padding: "12px", background: "#6c757d", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>Back to Home</button>
     </div>
   );
-}
+};
+
+export default CustomerBilling;

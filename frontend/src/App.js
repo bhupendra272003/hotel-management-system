@@ -1,6 +1,6 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState, useEffect } from "react";
-
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 // Customer Components
 import CustomerDashboard from "./components/customer/CustomerDashboard";
 import CustomerBooking from "./components/customer/CustomerBooking";
@@ -80,7 +80,14 @@ function App() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {isDarkMode ? <RainEffect /> : <SunsetBackground />}
-      
+        <AuthProvider>
+      <Router>
+        {/* Your routes */}
+        <Routes>
+          {/* Your route definitions */}
+        </Routes>
+      </Router>
+    </AuthProvider>
       <BrowserRouter>
         <div style={{ flex: 1 }}>
           <Routes>

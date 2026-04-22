@@ -1,142 +1,216 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import ThemeToggle from "../ThemeToggle";
-import API_URL from "../../api/config";
+import { useAuth } from "../../contexts/AuthContext";
 
-export default function UserProfile({ user, setUser }) {
-  const [profile, setProfile] = useState({
-    name: "", email: "", phone: "", address: "", salary: "", joinDate: "", role: ""
-  });
-  const [editMode, setEditMode] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "", newPassword: "", confirmPassword: ""
-  });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
-  const navigate = useNavigate();
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
-  const fetchProfile = useCallback(async () => {
-    try {
-      const response = await axios.get(`${API_URL}/auth/profile/${user._id}`);
-      setProfile(response.data);
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to load profile" });
-    }
-  }, [user?._id]);
+const UserProfile = () => {
+  const { user, updateUser } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+  });
 
   useEffect(() => {
     if (user && user._id) {
       fetchProfile();
     }
-  }, [user, fetchProfile]);
+  }, [user]);
 
-  const handleUpdateProfile = async () => {
-    setLoading(true);
+  const fetchProfile = async () => {
     try {
-      const response = await axios.put(`${API_URL}/auth/profile/${user._id}`, {
-        name: profile.name, phone: profile.phone, address: profile.address
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_URL}/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (response.data.success) {
-        setMessage({ type: "success", text: "Profile updated successfully!" });
-        setEditMode(false);
-        setUser({ ...user, name: profile.name });
-        setTimeout(() => setMessage(null), 3000);
-      }
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to update profile" });
+      setProfile(response.data);
+      setFormData({
+        name: response.data.name || "",
+        email: response.data.email || "",
+        phone: response.data.phone || "",
+        address: response.data.address || "",
+      });
+    } catch (err) {
+      setError("Failed to load profile");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleChangePassword = async () => {
-    if (!passwordData.currentPassword) {
-      setMessage({ type: "error", text: "Please enter current password" });
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      setMessage({ type: "error", text: "Password must be at least 6 characters" });
-      return;
-    }
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage({ type: "error", text: "Passwords do not match" });
-      return;
-    }
-    
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.put(`${API_URL}/auth/change-password/${user._id}`, {
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword
+      const token = localStorage.getItem("token");
+      const response = await axios.put(`${API_URL}/users/profile`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (response.data.success) {
-        setMessage({ type: "success", text: "Password changed successfully!" });
-        setShowPasswordModal(false);
-        setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-        setTimeout(() => setMessage(null), 3000);
-      }
-    } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.error || "Failed to change password" });
+      setProfile(response.data);
+      updateUser(response.data);
+      setEditing(false);
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update profile");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: '900px', margin: '40px auto', padding: '30px', background: 'var(--bg-card)', borderRadius: '20px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-        <div style={{ fontSize: '4rem' }}>👤</div>
-        <h1 style={{ fontSize: '2rem', color: '#dc3c3c' }}>My Profile</h1>
-      </div>
-      
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-        <ThemeToggle />
-      </div>
-      
-      {message && <div style={{ padding: '12px', borderRadius: '10px', marginBottom: '20px', textAlign: 'center', backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da', color: message.type === 'success' ? '#155724' : '#721c24' }}>{message.text}</div>}
-      
-      <div>
-        <h3>📋 Personal Information</h3>
-        <div style={{ display: 'grid', gap: '20px', marginTop: '20px' }}>
-          <div><label>Full Name</label>{editMode ? <input type="text" value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid var(--border-color)' }} /> : <div style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '8px' }}>{profile.name}</div>}</div>
-          <div><label>Email</label><div style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '8px' }}>{profile.email}</div></div>
-          <div><label>Phone</label>{editMode ? <input type="tel" value={profile.phone} onChange={e => setProfile({...profile, phone: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid var(--border-color)' }} /> : <div style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '8px' }}>{profile.phone || "Not provided"}</div>}</div>
-          <div><label>Address</label>{editMode ? <textarea value={profile.address} onChange={e => setProfile({...profile, address: e.target.value})} rows="3" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid var(--border-color)' }} /> : <div style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '8px' }}>{profile.address || "Not provided"}</div>}</div>
-          <div><label>Role</label><div style={{ padding: '12px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '8px', color: 'white' }}>{profile.role}</div></div>
-          <div><label>Member Since</label><div style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '8px' }}>{new Date(profile.joinDate).toLocaleDateString()}</div></div>
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            User Profile
+          </h2>
         </div>
-        
-        <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
-          {!editMode ? (
-            <>
-              <button onClick={() => setEditMode(true)} style={{ flex: 1, padding: '12px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>✏️ Edit Profile</button>
-              <button onClick={() => setShowPasswordModal(true)} style={{ flex: 1, padding: '12px', background: '#ffc107', color: '#333', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>🔒 Change Password</button>
-            </>
-          ) : (
-            <>
-              <button onClick={handleUpdateProfile} disabled={loading} style={{ flex: 1, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>{loading ? "Saving..." : "💾 Save"}</button>
-              <button onClick={() => { setEditMode(false); fetchProfile(); }} style={{ flex: 1, padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
-            </>
-          )}
-        </div>
-      </div>
-      
-      {showPasswordModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '30px', borderRadius: '20px', maxWidth: '450px', width: '90%' }}>
-            <h3>Change Password</h3>
-            <input type="password" placeholder="Current Password" value={passwordData.currentPassword} onChange={e => setPasswordData({...passwordData, currentPassword: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ddd' }} />
-            <input type="password" placeholder="New Password (min 6 characters)" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ddd' }} />
-            <input type="password" placeholder="Confirm Password" value={passwordData.confirmPassword} onChange={e => setPasswordData({...passwordData, confirmPassword: e.target.value})} style={{ width: '100%', padding: '12px', marginBottom: '20px', borderRadius: '8px', border: '1px solid #ddd' }} />
-            <div style={{ display: 'flex', gap: '15px' }}>
-              <button onClick={handleChangePassword} style={{ flex: 1, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Update</button>
-              <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+
+        {error && (
+          <div className="m-6 p-4 bg-red-50 dark:bg-red-900 rounded-md">
+            <p className="text-red-700 dark:text-red-200">{error}</p>
+          </div>
+        )}
+
+        {!editing ? (
+          <div className="p-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Name
+                </label>
+                <p className="mt-1 text-gray-900 dark:text-white">{profile?.name}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Email
+                </label>
+                <p className="mt-1 text-gray-900 dark:text-white">{profile?.email}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Phone
+                </label>
+                <p className="mt-1 text-gray-900 dark:text-white">{profile?.phone || "Not provided"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Address
+                </label>
+                <p className="mt-1 text-gray-900 dark:text-white">{profile?.address || "Not provided"}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Role
+                </label>
+                <p className="mt-1 text-gray-900 dark:text-white capitalize">{profile?.role}</p>
+              </div>
+            </div>
+            <div className="mt-6">
+              <button
+                onClick={() => setEditing(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Edit Profile
+              </button>
             </div>
           </div>
-        </div>
-      )}
-      
-      <button onClick={() => navigate(-1)} style={{ display: 'block', margin: '20px auto', padding: '10px 20px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>← Back</button>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Address
+                </label>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  rows="3"
+                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex space-x-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {loading ? "Saving..." : "Save Changes"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default UserProfile;
