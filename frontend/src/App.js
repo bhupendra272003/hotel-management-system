@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Router, Routes, Route } from 'react-router-dom';
-import './App.css'; // or whatever your styles import is
+import { BrowserRouter, Routes, Route } from 'react-router-dom';  // Remove Router from here
+import './App.css';
 
 import { AuthProvider } from './contexts/AuthContext';
+
 // Customer Components
 import CustomerDashboard from "./components/customer/CustomerDashboard";
 import CustomerBooking from "./components/customer/CustomerBooking";
@@ -82,59 +83,52 @@ function App() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {isDarkMode ? <RainEffect /> : <SunsetBackground />}
-        <AuthProvider>
-      <Router>
-        {/* Your routes */}
-        <Routes>
-          {/* Your route definitions */}
-        </Routes>
-      </Router>
-    </AuthProvider>
-      <BrowserRouter>
-        <div style={{ flex: 1 }}>
-          <Routes>
-            {/* Public Customer Routes */}
-            <Route path="/" element={<CustomerDashboard />} />
-            <Route path="/customer/booking" element={<CustomerBooking />} />
-            <Route path="/customer/food" element={<CustomerFoodOrder />} />
-            <Route path="/customer/table" element={<CustomerTableBooking />} />
-            <Route path="/customer/table-food" element={<CustomerTableFoodOrder />} />
-            <Route path="/customer/billing" element={<CustomerBilling />} />
-            <Route path="/customer/food-payment" element={<CustomerFoodPayment />} />
-            <Route path="/customer/table-payment" element={<CustomerTablePayment />} />
-            <Route path="/customer/room-payment" element={<RoomPayment />} />
-            
-            <Route path="/customer/print-table-bill" element={<PrintTableBill />} />
-            <Route path="/customer/print-room-bill" element={<PrintRoomBill />} />
-            
-            {/* Login & Profile */}
-            <Route path="/login" element={<Login setUser={setUser} />} />
-            <Route path="/profile" element={<UserProfile user={user} setUser={setUser} />} />
-            
-            {/* Receptionist Routes */}
-            <Route path="/receptionist" element={<ReceptionistDashboard user={user} />} />
-            <Route path="/receptionist/profile" element={<ReceptionistProfile user={user} setUser={setUser} />} />
-            <Route path="/receptionist/booking" element={<RoomBooking />} />
-            <Route path="/receptionist/checkinout" element={<CheckInOut />} />
-            <Route path="/receptionist/confirm-orders" element={<ConfirmOrders />} />
-            <Route path="/receptionist/confirm-tables" element={<ConfirmTables />} />
-            <Route path="/receptionist/tables" element={<ManageTables />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboard user={user} />} />
-            <Route path="/admin/stats" element={<HotelStats />} />
-            <Route path="/admin/staff" element={<ManageStaff />} />
-            <Route path="/admin/tasks" element={<AssignTasks />} />
-            <Route path="/admin/reports" element={<ViewReports />} />
-            <Route path="/admin/bills" element={<BillManagement />} />
-            <Route path="/admin/task-distribution" element={<TaskDistribution />} />
-            
-            {/* Waiter Routes */}
-            <Route path="/waiter" element={<WaiterDashboard user={user} />} />
-            <Route path="/waiter/profile" element={<WaiterProfile user={user} setUser={setUser} />} />
-          </Routes>
-        </div>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <div style={{ flex: 1 }}>
+            <Routes>
+              {/* Public Customer Routes */}
+              <Route path="/" element={<CustomerDashboard />} />
+              <Route path="/customer/booking" element={<CustomerBooking />} />
+              <Route path="/customer/food" element={<CustomerFoodOrder />} />
+              <Route path="/customer/table" element={<CustomerTableBooking />} />
+              <Route path="/customer/table-food" element={<CustomerTableFoodOrder />} />
+              <Route path="/customer/billing" element={<CustomerBilling />} />
+              <Route path="/customer/food-payment" element={<CustomerFoodPayment />} />
+              <Route path="/customer/table-payment" element={<CustomerTablePayment />} />
+              <Route path="/customer/room-payment" element={<RoomPayment />} />
+              <Route path="/customer/print-table-bill" element={<PrintTableBill />} />
+              <Route path="/customer/print-room-bill" element={<PrintRoomBill />} />
+              
+              {/* Login & Profile */}
+              <Route path="/login" element={<Login setUser={setUser} />} />
+              <Route path="/profile" element={<UserProfile user={user} setUser={setUser} />} />
+              
+              {/* Receptionist Routes */}
+              <Route path="/receptionist" element={<ReceptionistDashboard user={user} />} />
+              <Route path="/receptionist/profile" element={<ReceptionistProfile user={user} setUser={setUser} />} />
+              <Route path="/receptionist/booking" element={<RoomBooking />} />
+              <Route path="/receptionist/checkinout" element={<CheckInOut />} />
+              <Route path="/receptionist/confirm-orders" element={<ConfirmOrders />} />
+              <Route path="/receptionist/confirm-tables" element={<ConfirmTables />} />
+              <Route path="/receptionist/tables" element={<ManageTables />} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminDashboard user={user} />} />
+              <Route path="/admin/stats" element={<HotelStats />} />
+              <Route path="/admin/staff" element={<ManageStaff />} />
+              <Route path="/admin/tasks" element={<AssignTasks />} />
+              <Route path="/admin/reports" element={<ViewReports />} />
+              <Route path="/admin/bills" element={<BillManagement />} />
+              <Route path="/admin/task-distribution" element={<TaskDistribution />} />
+              
+              {/* Waiter Routes */}
+              <Route path="/waiter" element={<WaiterDashboard user={user} />} />
+              <Route path="/waiter/profile" element={<WaiterProfile user={user} setUser={setUser} />} />
+            </Routes>
+          </div>
+        </BrowserRouter>
+      </AuthProvider>
     </div>
   );
 }
