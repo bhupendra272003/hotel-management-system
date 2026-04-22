@@ -1,5 +1,8 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import './App.css'; // or whatever your styles import is
+
 import { AuthProvider } from './contexts/AuthContext';
 // Customer Components
 import CustomerDashboard from "./components/customer/CustomerDashboard";
