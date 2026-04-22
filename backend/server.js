@@ -22,7 +22,8 @@ const allowedOrigins = [
   'http://localhost:5500',
   'https://hotel-management-system.vercel.app',
   'https://hotelmna.onrender.com',
-  'https://hotel-management-system-pi-flame.vercel.app'
+  'https://hotel-management-system-pi-flame.vercel.app',
+  'https://hotel-management-system-git-main-bhupendra272003s-projects.vercel.app'
 ];
 
 // Add FRONTEND_URL from env if it exists
